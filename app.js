@@ -325,7 +325,7 @@
   function vKeyBox(w, keyAl) {
     const L = state.live;
     if (!L || L.week !== w.id) return "";
-    const entries = (Array.isArray(L.setups) ? L.setups : []).filter((r) => r.entry);
+    const entries = (Array.isArray(L.setups) ? L.setups : []).filter((r) => r.entry && r.conv !== false);
     const t = (a) => a.at ? `<time>${new Date(a.at).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</time>` : "";
     const now = entries.map((r) => `<div class="kb-row up click" data-pair="${esc(r.pair)}"><span class="kb-ic">🎯</span><div style="flex:1"><b>${esc(r.pair)} ${r.bias}</b> <span class="mut">score ${sg(r.score)}</span><br><span>${esc(r.status)}</span>${isNum(r.h1Fail) ? ` <span class="mut">· SL beyond ${r.h1Fail}</span>` : ""}</div><span class="tag up">ENTRY NOW</span></div>`).join("");
     const hist = keyAl.map((a) => `<div class="kb-row ${/BIAS FLIPPED/.test(a.text) ? "dn" : "up"}"><span class="kb-ic">${/BIAS FLIPPED/.test(a.text) ? "🔄" : "🔔"}</span><div style="flex:1">${esc(a.text)}</div>${t(a)}</div>`).join("");
@@ -338,10 +338,10 @@
     const L = state.live;
     if (!L || L.week !== w.id || !Array.isArray(L.setups)) return "";
     const rows = L.setups.slice().sort((a, b) => (b.entry - a.entry) || (b.ready - a.ready) || Math.abs(b.score) - Math.abs(a.score));
-    const tag = (r) => r.entry ? '<span class="tag up">ENTRY</span>' : r.ready ? '<span class="tag gold">ready</span>' : '<span class="tag">wait</span>';
-    const body = rows.length ? `<div class="tw"><table><thead><tr><th></th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>D1</th><th class="r">D1 pullback</th><th>H1</th><th class="r">H1 pullback</th><th class="r">SL beyond (H1)</th><th class="wrap">Status</th></tr></thead><tbody>${rows.map((r) => `<tr class="click" data-pair="${esc(r.pair)}"><td>${tag(r)}</td><td class="ccy">${esc(r.pair)}</td><td class="${r.bias === "BUY" ? "up" : "dn"} b">${r.bias}</td><td class="r b ${cls(r.score)}">${sg(r.score)}</td><td class="${r.d1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.d1Trend)}</td><td class="r">${isNum(r.d1Pct) && r.d1Pct ? f(r.d1Pct, 0) + "%" : "–"}</td><td class="${r.h1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.h1Trend)}</td><td class="r">${isNum(r.h1Pct) && r.h1Pct ? f(r.h1Pct, 0) + "%" : "–"}</td><td class="r mut">${isNum(r.h1Fail) ? r.h1Fail : "–"}</td><td class="wrap" style="white-space:normal">${esc(r.status)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No pair has a live |score| ≥ 50 right now.</p>`;
-    const n = rows.filter((r) => r.entry).length;
-    return `<div style="margin-top:16px">${card("Live setups", `Scanner · ${n} entry setup${n === 1 ? "" : "s"} · every H1 close · Dow Fib D1 + H1`, body, "All 28 pairs with a live |score| ≥ 50 run the Sunday gate: D1 Dow trend = bias, D1 pullback ≥ 50% (FULL) or 38.2–50% with H1 aligned (LOW). ENTRY = H1 pullback 50–100% with H1 aligned, or an H1 close beyond the H1 fail level. Check the chart before entering.")}</div>`;
+    const tag = (r) => r.entry && r.conv === false ? '<span class="tag warn">entry · low score</span>' : r.entry ? '<span class="tag up">ENTRY</span>' : r.ready ? '<span class="tag gold">ready</span>' : '<span class="tag">wait</span>';
+    const body = rows.length ? `<div class="tw"><table><thead><tr><th></th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>D1</th><th class="r">D1 pullback</th><th>H1</th><th class="r">H1 pullback</th><th class="r">SL beyond (H1)</th><th class="wrap">Status</th></tr></thead><tbody>${rows.map((r) => `<tr class="click" data-pair="${esc(r.pair)}"><td>${tag(r)}</td><td class="ccy">${esc(r.pair)}</td><td class="${r.bias === "BUY" ? "up" : "dn"} b">${r.bias}</td><td class="r b ${cls(r.score)}">${sg(r.score)}</td><td class="${r.d1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.d1Trend)}</td><td class="r">${isNum(r.d1Pct) && r.d1Pct ? f(r.d1Pct, 0) + "%" : "–"}</td><td class="${r.h1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.h1Trend)}</td><td class="r">${isNum(r.h1Pct) && r.h1Pct ? f(r.h1Pct, 0) + "%" : "–"}</td><td class="r mut">${isNum(r.h1Fail) ? r.h1Fail : "–"}</td><td class="wrap" style="white-space:normal">${esc(r.status)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No shortlisted pair or pair with live |score| ≥ 50 right now.</p>`;
+    const n = rows.filter((r) => r.entry && r.conv !== false).length;
+    return `<div style="margin-top:16px">${card("Live setups", `Scanner · ${n} entry setup${n === 1 ? "" : "s"} · every H1 close · Dow Fib D1 + H1`, body, "Every shortlisted pair, plus any pair with a live |score| ≥ 50, runs the Sunday gate (bias = sign of the live score). A shortlisted pair at entry with |score| < 50 shows as low score and does not push: D1 Dow trend = bias, D1 pullback ≥ 50% (FULL) or 38.2–50% with H1 aligned (LOW). ENTRY = H1 pullback 50–100% with H1 aligned, or an H1 close beyond the H1 fail level. Check the chart before entering.")}</div>`;
   }
   function stateTag(s) { if (!s || s === "n/a") return `<span class="mut">–</span>`; return `<span class="tag ${s === "CONFIRM" ? "up" : s === "OPPOSE" ? "dn" : ""}">${esc(s.toLowerCase())}</span>`; }
 
@@ -375,6 +375,14 @@
       "Stored per plan week from the model files. Weeks before 9 Nov have no COT RSI; 19–23 Oct stored only Sarmaaya's COT Total. Open interest / long / short columns aren't in the model files, so they aren't shown.");
   }
 
+  function liveGate(w, p) {
+    const L = state.live;
+    const r = L && L.week === w.id && Array.isArray(L.setups) ? L.setups.find((x) => x.pair === p.pair) : null;
+    if (!r) return esc(p.gate || "");
+    const tg = r.entry && r.conv === false ? '<span class="tag warn">entry · low score</span>' : r.entry ? '<span class="tag up">ENTRY</span>' : r.ready ? '<span class="tag gold">ready</span>' : '<span class="tag">wait</span>';
+    const at = L.at ? new Date(L.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+    return `${tg} <span class="tag info">live ${esc(at)}</span> ${r.bias !== p.planBias ? `<b class="${r.bias === "BUY" ? "up" : "dn"}">${r.bias}</b> ` : ""}${esc(r.status)}<div class="mut" style="font-size:11px">Sunday: ${esc(p.gate || "–")}</div>`;
+  }
   function vPairs(w) {
     if (w.missing) return missing(w);
     const s = snapshot(w);
@@ -387,7 +395,7 @@
       <div class="tw"><table><thead><tr><th>#</th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>Strength</th><th class="r">Now</th><th>Elig.</th><th>Gate (Dow Fib D1+H1)</th><th>Status</th><th class="r">Week pips</th></tr></thead><tbody>${ps.map((p) => {
         const r = pairResult(w, p);
         const moved = isNum(p.score) && p.score !== p.planScore;
-        return `<tr class="click" data-pair="${p.pair}"><td class="mut">${p.rank}</td><td class="b">${p.pair}</td><td>${biasTxt(p.planBias)}</td><td class="r b ${cls(p.planScore)}">${sg(p.planScore)}</td><td>${bar(p.planScore, 80)}</td><td class="r ${moved ? cls(p.score) : "mut"}">${moved ? sg(p.score) : "="}</td><td>${esc(p.elig || "")}</td><td class="wrap" style="white-space:normal;max-width:300px">${esc(p.gate || "")}</td><td>${tier(p.tier)}</td><td class="r ${r ? cls(r.pips) : "mut"}">${r ? sg(r.pips, 0) : "–"}</td></tr>`;
+        return `<tr class="click" data-pair="${p.pair}"><td class="mut">${p.rank}</td><td class="b">${p.pair}</td><td>${biasTxt(p.planBias)}</td><td class="r b ${cls(p.planScore)}">${sg(p.planScore)}</td><td>${bar(p.planScore, 80)}</td><td class="r ${moved ? cls(p.score) : "mut"}">${moved ? sg(p.score) : "="}</td><td>${esc(p.elig || "")}</td><td class="wrap" style="white-space:normal;max-width:320px">${liveGate(w, p)}</td><td>${tier(p.tier)}</td><td class="r ${r ? cls(r.pips) : "mut"}">${r ? sg(r.pips, 0) : "–"}</td></tr>`;
       }).join("") || `<tr><td colspan="10" class="empty">None in this filter.</td></tr>`}</tbody></table></div>`;
     return card("Pairs", "Pair score = base strength − quote strength · tap a row for levels, history and news", body);
   }

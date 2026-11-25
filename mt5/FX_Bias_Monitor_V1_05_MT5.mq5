@@ -11,6 +11,7 @@
 //|    live |score| >= ScanMinScore run the Dow Fib gate (D1 + H1,   |
 //|    DowFibEngine_v14.mqh = Aamir's TradingView indicator v14) and  |
 //|    push NEW SETUP alerts. Needs DowFibEngine_v14.mqh next to it. |
+//|  - V1.07: shortlist always gated live; push only if |score|>=50|
 //|  - push alerts (MetaTrader app) when a shortlisted pair's bias   |
 //|    flips / score weakens, or price breaks the invalidation level |
 //|  - writes live.json (MQL5\Files common) and optionally commits   |
@@ -23,7 +24,7 @@
 //| Attach to ONE chart (any symbol, any timeframe).                 |
 //+------------------------------------------------------------------+
 #property copyright "FX28 weekly model"
-#property version   "1.06"
+#property version   "1.07"
 #include "DowFibEngine_v14.mqh"
 #property strict
 
@@ -87,7 +88,7 @@ struct SetupRow
 {
    string pair, sym, want, status, d1Trend, h1Trend;
    double score, d1Fail, d1Pct, d1Ext, h1Fail, h1Pct, band, close;
-   bool   entry, ready;
+   bool   entry, ready, shortl, conv;
    datetime since;
 };
 SetupRow gSetups[];
@@ -704,15 +705,26 @@ void ScanAll(const bool force)
    int nEntry=0;
    for(int i=0;i<ArraySize(gPairs);i++)
    {
-      if(gPairs[i].sym=="" || MathAbs(gPairs[i].score)<ScanMinScore) continue;
+      if(gPairs[i].sym=="") continue;
+      bool sl=IsShort(gPairs[i].tier);
+      bool cv=(MathAbs(gPairs[i].score)>=ScanMinScore);
+      if(!sl && !cv) continue;                 // 1.07: shortlist always scanned; others only with |score| >= ScanMinScore
       SetupRow r;
       EvalPair(gPairs[i].sym,gPairs[i].pair,gPairs[i].score,r,0);
+      r.shortl=sl; r.conv=cv;
       r.since=TimeGMT();
       bool was=false;
       for(int k=0;k<ArraySize(prev);k++) if(prev[k].pair==r.pair && prev[k].want==r.want){ if(prev[k].entry && r.entry) r.since=prev[k].since; was=prev[k].entry; if(!r.entry && prev[k].ready==r.ready && prev[k].status==r.status) r.since=prev[k].since; break; }
       int m=ArraySize(gSetups); ArrayResize(gSetups,m+1); gSetups[m]=r;
-      if(r.entry) nEntry++;
-      if(r.entry && !was)
+      if(r.entry && r.conv) nEntry++;
+      if(r.entry && !was && !r.conv)
+      {
+         string bias=(r.want=="UP" ? "BUY" : "SELL");
+         string msg=StringFormat("%s %s at entry but live score %+.1f is below %.0f (low conviction): %s",r.pair,bias,r.score,ScanMinScore,r.status);
+         AddAlert("info",r.pair,msg);
+         gDirty=true;
+      }
+      else if(r.entry && !was)
       {
          string bias=(r.want=="UP" ? "BUY" : "SELL");
          int dg=(int)SymbolInfoInteger(r.sym,SYMBOL_DIGITS);
@@ -727,7 +739,7 @@ void ScanAll(const bool force)
    }
    bool missing=false; for(int i=0;i<ArraySize(gSetups);i++) if(StringFind(gSetups[i].status,"no history")==0) missing=true;
    if(missing) gLastScanBar=0;   // history still downloading: retry on the next timer tick
-   PrintFormat("Scanner: %d pairs with |score| >= %.0f, %d entry setups",ArraySize(gSetups),ScanMinScore,nEntry);
+   PrintFormat("Scanner: %d pairs (shortlist + |score| >= %.0f), %d entry setups",ArraySize(gSetups),ScanMinScore,nEntry);
    gDirty=true;
 }
 
@@ -738,8 +750,8 @@ string SetupsJson()
    {
       SetupRow r=gSetups[i];
       int dg=(int)SymbolInfoInteger(r.sym,SYMBOL_DIGITS);
-      j+=StringFormat("%s{\"pair\":\"%s\",\"bias\":\"%s\",\"score\":%s,\"entry\":%s,\"ready\":%s,\"band\":%s,\"status\":\"%s\",\"d1Trend\":\"%s\",\"d1Fail\":%s,\"d1Pct\":%s,\"h1Trend\":\"%s\",\"h1Fail\":%s,\"h1Pct\":%s,\"close\":%s,\"since\":\"%s\"}",
-                      (i?",":""),r.pair,(r.want=="UP"?"BUY":"SELL"),D2S(r.score,2),(r.entry?"true":"false"),(r.ready?"true":"false"),D2S(r.band,2),JsonEsc(r.status),
+      j+=StringFormat("%s{\"pair\":\"%s\",\"bias\":\"%s\",\"score\":%s,\"entry\":%s,\"ready\":%s,\"shortlist\":%s,\"conv\":%s,\"band\":%s,\"status\":\"%s\",\"d1Trend\":\"%s\",\"d1Fail\":%s,\"d1Pct\":%s,\"h1Trend\":\"%s\",\"h1Fail\":%s,\"h1Pct\":%s,\"close\":%s,\"since\":\"%s\"}",
+                      (i?",":""),r.pair,(r.want=="UP"?"BUY":"SELL"),D2S(r.score,2),(r.entry?"true":"false"),(r.ready?"true":"false"),(r.shortl?"true":"false"),(r.conv?"true":"false"),D2S(r.band,2),JsonEsc(r.status),
                       r.d1Trend,D2S(r.d1Fail,dg),D2S(r.d1Pct,1),r.h1Trend,D2S(r.h1Fail,dg),D2S(r.h1Pct,1),D2S(r.close,dg),IsoUtc(r.since));
    }
    return j+"]";
@@ -901,7 +913,7 @@ void FlushPush()
 //+------------------------------------------------------------------+
 string BuildJson()
 {
-   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.06\",\"pulse\":"+PulseJson()+",\"setups\":"+SetupsJson()+","+(gCheckJson!="" ? "\"dowfibCheck\":"+gCheckJson+"," : "")+"\"currencies\":[";
+   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.07\",\"pulse\":"+PulseJson()+",\"setups\":"+SetupsJson()+","+(gCheckJson!="" ? "\"dowfibCheck\":"+gCheckJson+"," : "")+"\"currencies\":[";
    for(int c=0;c<8;c++)
       j+=StringFormat("%s{\"ccy\":\"%s\",\"fund\":%s,\"news\":%s,\"strength\":%s}",(c?",":""),CCY[c],D2S(cFund[c],4),D2S(cNews[c],4),D2S(cStr[c],3));
    j+="],\"pairs\":[";
@@ -985,7 +997,7 @@ void PublishGitHub(const string json)
 //+------------------------------------------------------------------+
 void Panel()
 {
-   string s="FX Bias Monitor 1.06 | "+gWeekLabel+" | news released: ";
+   string s="FX Bias Monitor 1.07 | "+gWeekLabel+" | news released: ";
    int rel=0, mat=0; for(int i=0;i<ArraySize(gNews);i++){ if(gNews[i].released) rel++; if(gNews[i].matched) mat++; }
    s+=IntegerToString(rel)+"/"+IntegerToString(ArraySize(gNews))+" (matched "+IntegerToString(mat)+")\n";
    s+="Strength: ";
@@ -1001,7 +1013,7 @@ void Panel()
    {
       s+="Setups: ";
       int shown=0;
-      for(int i=0;i<ArraySize(gSetups);i++) if(gSetups[i].entry || gSetups[i].ready){ s+=StringFormat("%s %s %s  ",gSetups[i].pair,(gSetups[i].want=="UP"?"BUY":"SELL"),(gSetups[i].entry?"ENTRY":"ready")); shown++; }
+      for(int i=0;i<ArraySize(gSetups);i++) if(gSetups[i].entry || gSetups[i].ready){ s+=StringFormat("%s %s %s  ",gSetups[i].pair,(gSetups[i].want=="UP"?"BUY":"SELL"),(gSetups[i].entry?(gSetups[i].conv?"ENTRY":"entry-lowconv"):"ready")); shown++; }
       if(shown==0) s+="none ready";
       s+="\n";
    }
