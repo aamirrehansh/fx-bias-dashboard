@@ -478,9 +478,10 @@
   async function loadLive() {
     let j = null;
     try {
-      const res = await fetch("data/live.json?t=" + Date.now(), { cache: "no-store" });
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      j = await res.json();
+      // MT5 monitor commits live.json to the 'live' branch; the contents API is not CDN-cached.
+      const urls = [["https://api.github.com/repos/aamirrehansh/fx-bias-dashboard/contents/data/live.json?ref=live", { headers: { Accept: "application/vnd.github.raw+json" }, cache: "no-store" }], ["data/live.json?t=" + Date.now(), { cache: "no-store" }]];
+      for (const [u, o] of urls) { try { const res = await fetch(u, o); if (res.ok) { j = await res.json(); break; } } catch (e) { } }
+      if (!j) throw new Error("none");
       LS.set("fx_live", j);
       state.liveErr = null;
     } catch (e) { state.liveErr = navigator.onLine ? "no live file yet" : "offline"; j = LS.get("fx_live", null); }
