@@ -9,6 +9,10 @@ import json, os, re, sys, datetime as dt
 import openpyxl
 
 PF = "/mnt/project-files"
+ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root (data/pulse/...)
+FUND_KEYS = ["db", "t1", "t2", "t3", "s1", "s2", "s3", "s4", "m1", "m2", "m3", "m4", "m5", "m6", "sn", "boost", "fs", "fo", "cap"]
+FUND_CELLS = [11, 12, 13, 14, 15, 16, 17, 18, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31]  # Settings!B<row>
+FUND_DEFAULT = dict(zip(FUND_KEYS, [2, 10, 25, 50, .25, .5, .75, 1, 1, .75, .5, .5, .25, 0, 3, .25, .25, .125, .375]))
 CALC = os.environ.get("CALC_DIR", "")  # folder with LibreOffice-recalculated copies
 CCYS = ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"]
 
@@ -21,7 +25,10 @@ WEEKS = [
     ("2026-11-16", "16–20 Nov 2026", "Final_Weekly_Model_16-20_Nov_2026.xlsx", "final", {"calc": "f1620.xlsx"}),
     ("2026-11-23", "23–27 Nov 2026", "Final_Weekly_Model_23-27_Nov_2026.xlsx", "final",
      {"updates": [("2026-11-25T12:00:00Z", "u25.xlsx", "News actuals re-scored 25-Nov ~17:00 PKT (US Core PCE/GDP not out yet). Gate unchanged from 22-Nov.", 20)],
-      "actuals": [("2026-11-25T13:40:00Z", "data/2026-11-25/actuals_ff.csv", "Forex Factory actuals incl. US 18:30 PKT releases (Core PCE, GDP, claims, durables, income/spending).")]}),
+      "actuals": [("2026-11-25T13:40:00Z", "data/2026-11-25/actuals_ff.csv", "Forex Factory actuals incl. US 18:30 PKT releases (Core PCE, GDP, claims, durables, income/spending).")],
+      "tracked": "data/pulse/tracked_2026-11-22.csv",
+      "pulse": [("2026-11-25T15:10:00Z", "data/pulse/ff_2026-11-23.csv", "Investogenie Pulse: Conditional +/- updated from Forex Factory releases Mon-Wed (actual vs previous, tracked events); news actuals as of 18:30 PKT.",
+                 "data/2026-11-25/actuals_ff.csv")]}),
 ]
 
 
@@ -108,6 +115,9 @@ def extract_final(wb):
         mw = wb["Settings"]["B41"].value
         if isinstance(mw, (int, float)):
             w["newsMinW"] = mw  # News score = sum / MAX(total weight, this)
+        fsv = {k: wb["Settings"]["B%d" % r].value for k, r in zip(FUND_KEYS, FUND_CELLS)}
+        if all(isinstance(v, (int, float)) for v in fsv.values()):
+            w["fundSet"] = fsv  # Fundamental sheet thresholds / multipliers
     # fundamental
     fs = wb["Fundamental"]
     _, fr = table(fs)
@@ -290,7 +300,7 @@ def extract_opt2(wb):
             "notes": notes, "sources": {"cot": first_note(wb["COT"])}}
 
 
-def rescore_from_actuals(week, path, ts, note):
+def rescore_from_actuals(week, path, ts, note, fund=None):
     """Re-score News from a CSV of released actuals (date,ccy,event_starts,actual,forecast) and
     rebuild currency strength / pair scores exactly like the workbook (sum / MAX(weight, Settings B41))."""
     import csv
@@ -308,7 +318,10 @@ def rescore_from_actuals(week, path, ts, note):
     minw = week["weights"].get("newsMinW", 2) or 2
     wt = week["weights"]
     cur = []
-    for c in week["currencies"]:
+    for c0 in week["currencies"]:
+        c = dict(c0)
+        if fund and c["ccy"] in fund:
+            c["fund"] = fund[c["ccy"]]
         rows = [n for n in news if n["ccy"] == c["ccy"] and n.get("weight") is not None]
         sw = sum(n["weight"] for n in rows)
         ns = sum(n["score"] or 0 for n in rows) / max(sw, minw)
@@ -321,6 +334,96 @@ def rescore_from_actuals(week, path, ts, note):
     pairs = [{"pair": p["pair"], "score": round(smap[p["pair"][:3]] - smap[p["pair"][3:]], 6),
               "bias": "BUY" if smap[p["pair"][:3]] - smap[p["pair"][3:]] >= 0 else "SELL"} for p in week["pairs"]]
     return {"at": ts, "note": note, "currencies": cur, "pairs": pairs, "news": news}
+
+
+def sgn(v):
+    return (v > 0) - (v < 0)
+
+
+def fund_score(L, O, P, S):
+    """Fundamental sheet column Y: Investogenie change L, Latest net O, Conditional net P."""
+    L, O, P = L or 0, O or 0, P or 0
+    M = 0 if abs(L) < S["db"] else sgn(L)
+    N = 0 if abs(L) < S["db"] else S["s1"] if abs(L) < S["t1"] else S["s2"] if abs(L) < S["t2"] else S["s3"] if abs(L) < S["t3"] else S["s4"]
+    st = lambda n: "n/a" if M == 0 else "FLAT" if n == 0 else ("CONFIRM" if sgn(n) == M else "OPPOSE")
+    Q, R = st(O), st(P)
+    C, Op = (Q == "CONFIRM") + (R == "CONFIRM"), (Q == "OPPOSE") + (R == "OPPOSE")
+    U = 0 if M == 0 else S["m1"] if C == 2 else S["m2"] if (C == 1 and Op == 0) else S["m3"] if (C == 1 and Op == 1) else S["m4"] if (C == 0 and Op == 0) else S["m5"] if (C == 0 and Op == 1) else S["m6"]
+    V = S["boost"] if ((Q == "CONFIRM" and abs(O) >= S["sn"]) or (R == "CONFIRM" and abs(P) >= S["sn"])) else 0
+    if M != 0:
+        return M * N * min(1, U + V), R
+    if sgn(O) * sgn(P) < 0:
+        return 0, R
+    base = S["fs"] if (O != 0 and P != 0) else S["fo"] if (O != 0 or P != 0) else 0
+    return sgn(O + P) * min(S["cap"], base * (2 if (abs(O) >= S["sn"] or abs(P) >= S["sn"]) else 1)), R
+
+
+def tracked_events(path):
+    """Sarmaaya Conditional Scoring > Forex Currency Data event list (+ extra_events.csv). {(ccy, name lower): polarity}"""
+    import csv
+    out = {}
+    for f in (path, os.path.join(ROOT, "data/pulse/extra_events.csv")):
+        if f and os.path.exists(f):
+            for r in csv.DictReader(open(f), delimiter="|"):
+                out[(r["ccy"], r["event"].strip().lower())] = (-1 if r["pol"] == "L" else 1, r["event"].strip())
+    return out
+
+
+def ff_value(s):
+    s = (s or "").strip().replace(",", "")
+    if not s:
+        return None
+    mult = {"K": 1e3, "M": 1e6, "B": 1e9, "T": 1e12}.get(s[-1], 1)
+    try:
+        return float(s.rstrip("%KMBT")) * mult
+    except ValueError:
+        return None
+
+
+def compute_pulse(week, ff_csv, tracked, asof=None):
+    """Investogenie Pulse: Sunday Conditional +/- plus each tracked release this week scored actual vs previous
+    (+ above, - below, tie ignored, flipped for unemployment/claims). Day = PKT date (UTC+5)."""
+    import csv
+    start = dt.datetime.fromisoformat(week["id"]) - dt.timedelta(hours=5)  # Monday 00:00 PKT in UTC
+    days = {c["ccy"]: [[0, 0] for _ in range(5)] for c in week["currencies"]}
+    newm = {c["ccy"]: [0, 0] for c in week["currencies"]}  # releases after the month turned (Conditional resets on the 1st)
+    now = dt.datetime.fromisoformat(asof.rstrip("Z")) if asof else dt.datetime.utcnow()
+    month_turned = (now + dt.timedelta(hours=5)).strftime("%Y-%m") != week["id"][:7]
+    evs = []
+    for r in csv.DictReader(open(ff_csv), delimiter="|"):
+        k = (r["ccy"], r["event"].strip().lower())
+        t = dt.datetime.fromisoformat(r["utc"])
+        if k not in tracked or r["ccy"] not in days or t < start:
+            continue
+        a, p = ff_value(r["actual"]), ff_value(r["previous"])
+        if a is None or p is None:
+            continue
+        sg_ = sgn(a - p) * tracked[k][0]
+        d = (t - start).days
+        if d > 4:
+            continue
+        if sg_ > 0:
+            days[r["ccy"]][d][0] += 1
+        elif sg_ < 0:
+            days[r["ccy"]][d][1] += 1
+        if (t + dt.timedelta(hours=5)).strftime("%Y-%m") != week["id"][:7] and sg_:
+            newm[r["ccy"]][0 if sg_ > 0 else 1] += 1
+        evs.append({"utc": r["utc"] + "Z", "day": d, "ccy": r["ccy"], "event": r["event"], "actual": r["actual"], "previous": r["previous"], "sign": sg_})
+    S = week["weights"].get("fundSet") or FUND_DEFAULT
+    rows = []
+    for c in week["currencies"]:
+        pp, pm = int(c.get("condPlus") or 0), int(c.get("condMinus") or 0)
+        dp, dm = sum(x[0] for x in days[c["ccy"]]), sum(x[1] for x in days[c["ccy"]])
+        plus, minus = (newm[c["ccy"]][0], newm[c["ccy"]][1]) if month_turned else (pp + dp, pm + dm)
+        lastPct = 100.0 * pp / (pp + pm) if pp + pm else None
+        curPct = 100.0 * plus / (plus + minus) if plus + minus else None
+        gain = (curPct / lastPct - 1) * 100 if (lastPct and curPct is not None) else None
+        f0, st0 = fund_score(c.get("investChg"), c.get("latestNet"), pp - pm, S)
+        f1, st1 = fund_score(c.get("investChg"), c.get("latestNet"), plus - minus, S)
+        rows.append({"ccy": c["ccy"], "prevPlus": pp, "prevMinus": pm, "days": days[c["ccy"]], "plus": plus, "minus": minus,
+                     "lastPct": lastPct, "curPct": curPct, "gain": gain, "condStatePrev": st0, "condState": st1,
+                     "fundPlan": c["fund"], "fundCalc": round(f0, 6), "fund": round(f1, 6)})
+    return {"rows": rows, "events": evs}
 
 
 def monday_to_friday(mid):
@@ -338,6 +441,13 @@ def write_plan(weeks, path):
     L.append("W,%s,%s,%s,%s,%s,%s" % (tuple(n(wt[k]) for k in ("fund", "cot", "seas", "news", "macro")) + (n(wt.get("newsMinW", 2)),)))
     for c in w["currencies"]:
         L.append("C,%s,%s,%s,%s,%s,%s,%s" % (c["ccy"], n(c["fund"]), n(c["cot"]), n(c["seas"]), n(c["news"]), n(c["macro"]), n(c["strength"])))
+    fs = wt.get("fundSet") or FUND_DEFAULT
+    L.append("FS," + ",".join(n(fs[k]) for k in FUND_KEYS))
+    for c in w["currencies"]:
+        L.append("F,%s,%s,%s,%s,%s,%s" % (c["ccy"], n(c.get("investChg") or 0), n(c.get("latestNet") or 0), n(c.get("condPlus") or 0), n(c.get("condMinus") or 0), w["id"][:7]))
+    if w.get("trackedFile"):
+        for (ccy, _), (pol, name) in sorted(tracked_events(os.path.join(ROOT, w["trackedFile"])).items()):
+            L.append("T,%s,%d,%s" % (ccy, pol, clean(name)))
     for e in w.get("news", []):
         if e.get("weight") is None or e.get("ccy") is None:
             continue
@@ -382,6 +492,15 @@ def main(out):
                             "news": b["news"]})
         for ts, csvp, note in extra.get("actuals", []):
             ups.append(rescore_from_actuals(base, os.path.join(PF, csvp), ts, note))
+        trk = tracked_events(os.path.join(ROOT, extra["tracked"])) if extra.get("tracked") else {}
+        base["trackedFile"] = extra.get("tracked")
+        for ts, ffp, note, actp in extra.get("pulse", []):
+            pu = compute_pulse(base, os.path.join(ROOT, ffp), trk, ts)
+            pu["at"] = ts
+            base["pulse"] = pu
+            upd = rescore_from_actuals(base, os.path.join(PF, actp), ts, note, {r["ccy"]: r["fund"] for r in pu["rows"]})
+            upd["pulse"] = True
+            ups.append(upd)
         base["updates"] = ups
         weeks.append(base)
     write_plan(weeks, os.path.join(os.path.dirname(out), "plan.csv"))

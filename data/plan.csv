@@ -8,6 +8,246 @@ C,CHF,0.25,0.5,0.5,0,0.5,32.5
 C,CAD,-0.25,-1,0.5,0.25,0,-21.25
 C,AUD,-0.375,-0.75,1,1,-1,-20
 C,NZD,0,-0.75,1,0.5,-0.5,-5
+FS,2,10,25,50,0.25,0.5,0.75,1,1,0.75,0.5,0.5,0.25,0,3,0.25,0.25,0.125,0.375
+F,USD,19.976,6,10,15,2026-11
+F,EUR,-12.15,4,17,17,2026-11
+F,GBP,1.428,5,16,9,2026-11
+F,JPY,10.67,5,4,7,2026-11
+F,CHF,8.751,8,3,2,2026-11
+F,CAD,-2.545,-3,10,10,2026-11
+F,AUD,-38.05,1,5,6,2026-11
+F,NZD,6.994,-5,5,9,2026-11
+T,AUD,1,ANZ Job Advertisements m/m
+T,AUD,1,Building Approvals m/m
+T,AUD,1,Cash Rate
+T,AUD,1,CB Leading Index m/m
+T,AUD,1,Commodity Prices y/y
+T,AUD,1,Company Operating Profits q/q
+T,AUD,1,Construction Work Done q/q
+T,AUD,1,CPI m/m
+T,AUD,1,CPI y/y
+T,AUD,1,Current Account
+T,AUD,1,Employment Change
+T,AUD,1,Flash Manufacturing PMI
+T,AUD,1,Flash Services PMI
+T,AUD,1,GDP q/q
+T,AUD,1,Import Prices q/q
+T,AUD,1,MI Inflation Expectations
+T,AUD,1,MI Inflation Gauge m/m
+T,AUD,1,NAB Business Confidence
+T,AUD,1,PPI q/q
+T,AUD,1,Private Capital Expenditure q/q
+T,AUD,1,Private Sector Credit m/m
+T,AUD,1,Trimmed Mean CPI m/m
+T,AUD,-1,Unemployment Rate
+T,AUD,1,Wage Price Index q/q
+T,AUD,1,Westpac Consumer Sentiment
+T,CAD,1,Building Permits m/m
+T,CAD,1,Common CPI y/y
+T,CAD,1,Core CPI m/m
+T,CAD,1,Core Retail Sales m/m
+T,CAD,1,Corporate Profits q/q
+T,CAD,1,CPI m/m
+T,CAD,1,Current Account
+T,CAD,1,Employment Change
+T,CAD,1,Foreign Securities Purchases
+T,CAD,1,GDP m/m
+T,CAD,1,Housing Starts
+T,CAD,1,IPPI m/m
+T,CAD,1,Ivey PMI
+T,CAD,1,Labor Productivity q/q
+T,CAD,1,Manufacturing PMI
+T,CAD,1,Manufacturing Sales m/m
+T,CAD,1,Median CPI y/y
+T,CAD,1,NHPI m/m
+T,CAD,1,Overnight Rate
+T,CAD,1,Retail Sales m/m
+T,CAD,1,RMPI m/m
+T,CAD,1,Trade Balance
+T,CAD,1,Trimmed CPI y/y
+T,CAD,-1,Unemployment Rate
+T,CAD,1,Wholesale Sales m/m
+T,CHF,1,CPI m/m
+T,CHF,1,GDP q/q
+T,CHF,1,KOF Economic Barometer
+T,CHF,1,Manufacturing PMI
+T,CHF,1,PPI m/m
+T,CHF,1,Retail Sales y/y
+T,CHF,1,SECO Consumer Climate
+T,CHF,-1,Unemployment Rate
+T,EUR,1,Consumer Confidence
+T,EUR,1,Core CPI Flash Estimate y/y
+T,EUR,1,CPI Flash Estimate y/y
+T,EUR,1,Current Account
+T,EUR,1,Final Core CPI y/y
+T,EUR,1,Final CPI y/y
+T,EUR,1,Final Manufacturing PMI
+T,EUR,1,Final Services PMI
+T,EUR,1,Flash Manufacturing PMI
+T,EUR,1,French Final CPI m/m
+T,EUR,1,French Final Manufacturing PMI
+T,EUR,1,French Final Services PMI
+T,EUR,1,French Flash Manufacturing PMI
+T,EUR,1,French Industrial Production m/m
+T,EUR,1,French Trade Balance
+T,EUR,1,German Factory Orders m/m
+T,EUR,1,German Final CPI m/m
+T,EUR,1,German Final Manufacturing PMI
+T,EUR,1,German Final Services PMI
+T,EUR,1,German GfK Consumer Climate
+T,EUR,1,German ifo Business Climate
+T,EUR,1,German Import Prices m/m
+T,EUR,1,German Industrial Production m/m
+T,EUR,1,German PPI m/m
+T,EUR,1,German Prelim CPI m/m
+T,EUR,1,German Retail Sales m/m
+T,EUR,1,German Trade Balance
+T,EUR,-1,German Unemployment Change
+T,EUR,1,German WPI m/m
+T,EUR,1,German ZEW Economic Sentiment
+T,EUR,1,Italian Industrial Production m/m
+T,EUR,1,Italian Manufacturing PMI
+T,EUR,-1,Italian Monthly Unemployment Rate
+T,EUR,1,Italian Retail Sales m/m
+T,EUR,1,Italian Services PMI
+T,EUR,1,Italian Trade Balance
+T,EUR,1,Main Refinancing Rate
+T,EUR,1,PPI m/m
+T,EUR,1,Retail Sales m/m
+T,EUR,1,Sentix Investor Confidence
+T,EUR,1,Spanish Flash CPI y/y
+T,EUR,1,Spanish Manufacturing PMI
+T,EUR,1,Spanish Services PMI
+T,EUR,-1,Spanish Unemployment Change
+T,EUR,-1,Spanish Unemployment Rate
+T,EUR,-1,Unemployment Rate
+T,EUR,1,ZEW Economic Sentiment
+T,GBP,1,Average Earnings Index 3m/y
+T,GBP,1,BRC Shop Price Index y/y
+T,GBP,1,CB Leading Index m/m
+T,GBP,1,CBI Industrial Order Expectations
+T,GBP,1,CBI Realized Sales
+T,GBP,-1,Claimant Count Change
+T,GBP,1,Construction PMI
+T,GBP,1,Consumer Inflation Expectations
+T,GBP,1,Core CPI y/y
+T,GBP,1,CPI y/y
+T,GBP,1,Final GDP q/q
+T,GBP,1,Final Manufacturing PMI
+T,GBP,1,Final Services PMI
+T,GBP,1,Flash Manufacturing PMI
+T,GBP,1,Flash Services PMI
+T,GBP,1,GDP m/m
+T,GBP,1,GfK Consumer Confidence
+T,GBP,1,Goods Trade Balance
+T,GBP,1,Halifax HPI m/m
+T,GBP,1,Index of Services 3m/3m
+T,GBP,1,Industrial Production m/m
+T,GBP,1,M4 Money Supply m/m
+T,GBP,1,Manufacturing Production m/m
+T,GBP,1,Mortgage Approvals
+T,GBP,1,Nationwide HPI m/m
+T,GBP,1,Net Lending to Individuals m/m
+T,GBP,1,Official Bank Rate
+T,GBP,1,PPI Input m/m
+T,GBP,1,PPI Output m/m
+T,GBP,1,Prelim GDP q/q
+T,GBP,1,Public Sector Net Borrowing
+T,GBP,1,Retail Sales m/m
+T,GBP,1,RICS House Price Balance
+T,GBP,1,Rightmove HPI m/m
+T,GBP,1,RPI y/y
+T,GBP,-1,Unemployment Rate
+T,JPY,1,Average Cash Earnings y/y
+T,JPY,1,BOJ Core CPI y/y
+T,JPY,1,BOJ Policy Rate
+T,JPY,1,BSI Manufacturing Index
+T,JPY,1,Capital Spending q/y
+T,JPY,1,Consumer Confidence
+T,JPY,1,Economy Watchers Sentiment
+T,JPY,1,Final GDP Price Index y/y
+T,JPY,1,Final GDP q/q
+T,JPY,1,Final Manufacturing PMI
+T,JPY,1,Flash Manufacturing PMI
+T,JPY,1,Household Spending y/y
+T,JPY,1,Housing Starts y/y
+T,JPY,1,Monetary Base y/y
+T,JPY,1,National Core CPI y/y
+T,JPY,1,PPI y/y
+T,JPY,1,Prelim GDP q/q
+T,JPY,1,Prelim Industrial Production m/m
+T,JPY,1,Prelim Machine Tool Orders y/y
+T,JPY,1,Retail Sales y/y
+T,JPY,1,Revised Industrial Production m/m
+T,JPY,1,SPPI y/y
+T,JPY,1,Tankan Manufacturing Index
+T,JPY,1,Tankan Non-Manufacturing Index
+T,JPY,1,Tokyo Core CPI y/y
+T,JPY,1,Trade Balance
+T,JPY,-1,Unemployment Rate
+T,NZD,1,ANZ Business Confidence
+T,NZD,1,ANZ Commodity Prices m/m
+T,NZD,1,Building Consents m/m
+T,NZD,1,BusinessNZ Manufacturing Index
+T,NZD,1,BusinessNZ Services Index
+T,NZD,1,Core Retail Sales q/q
+T,NZD,1,CPI q/q
+T,NZD,1,Credit Card Spending y/y
+T,NZD,1,Current Account
+T,NZD,1,Employment Change q/q
+T,NZD,1,FPI m/m
+T,NZD,1,GDP q/q
+T,NZD,1,Inflation Expectations q/q
+T,NZD,1,Labor Cost Index q/q
+T,NZD,1,Manufacturing Sales q/q
+T,NZD,1,NZIER Business Confidence
+T,NZD,1,Official Cash Rate
+T,NZD,1,PPI Input q/q
+T,NZD,1,PPI Output q/q
+T,NZD,1,Retail Sales q/q
+T,NZD,1,Trade Balance
+T,NZD,-1,Unemployment Rate
+T,NZD,1,Visitor Arrivals m/m
+T,NZD,1,Westpac Consumer Sentiment
+T,USD,1,ADP Non-Farm Employment Change
+T,USD,1,Average Hourly Earnings m/m
+T,USD,1,Building Permits
+T,USD,1,CB Consumer Confidence
+T,USD,1,Chicago PMI
+T,USD,1,Core CPI m/m
+T,USD,1,Core Durable Goods Orders m/m
+T,USD,1,Core PCE Price Index m/m
+T,USD,1,Core PPI m/m
+T,USD,1,Core Retail Sales m/m
+T,USD,1,CPI m/m
+T,USD,1,Durable Goods Orders m/m
+T,USD,1,Existing Home Sales
+T,USD,1,Factory Orders m/m
+T,USD,1,Federal Funds Rate
+T,USD,1,Final GDP q/q
+T,USD,1,Flash Manufacturing PMI
+T,USD,1,Flash Services PMI
+T,USD,1,Housing Starts
+T,USD,1,Industrial Production m/m
+T,USD,1,ISM Manufacturing PMI
+T,USD,1,ISM Services PMI
+T,USD,1,NAHB Housing Market Index
+T,USD,1,New Home Sales
+T,USD,1,NFIB Small Business Index
+T,USD,1,Non-Farm Employment Change
+T,USD,1,Personal Income m/m
+T,USD,1,Personal Spending m/m
+T,USD,1,Philly Fed Manufacturing Index
+T,USD,1,PPI m/m
+T,USD,1,Prelim GDP q/q
+T,USD,1,Prelim UoM Consumer Sentiment
+T,USD,1,Prelim UoM Inflation Expectations
+T,USD,1,Retail Sales m/m
+T,USD,1,Revised UoM Inflation Expectations
+T,USD,1,Richmond Manufacturing Index
+T,USD,1,Trade Balance
+T,USD,-1,Unemployment Claims
+T,USD,-1,Unemployment Rate
 N,2026-11-23,02:45,NZD,Low,1,0.5,0.8,0.7,0.5,Core Retail Sales q/q (New Zealand)
 N,2026-11-23,02:45,NZD,Low,1,0.5,0.5,-0.5,0.5,Retail Sales q/q (New Zealand)
 N,2026-11-23,13:15,EUR,High,1,1,49.8,49.5,1,S&P Global Manufacturing PMI (France) *theme

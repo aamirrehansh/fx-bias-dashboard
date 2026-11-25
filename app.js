@@ -276,11 +276,13 @@
   function vFactors(w) {
     if (w.missing) return missing(w);
     const s = snapshot(w);
-    const segs = [["fund", "Fundamental"], ["cot", "COT"], ["seas", "Seasonality"], ["macro", "Macro"]];
+    const segs = [["fund", "Fundamental"], ["pulse", "Pulse"], ["cot", "COT"], ["seas", "Seasonality"], ["macro", "Macro"]];
     let h = `<div class="toolbar"><div class="seg">${segs.map(([k, l]) => `<button data-factor="${k}" class="${state.factor === k ? "on" : ""}">${l}</button>`).join("")}</div></div>`;
     const cs = CCYS.map((c) => s.ccy[c]).filter(Boolean);
     if (state.factor === "fund") {
       h += card("Fundamental", esc((w.sources && w.sources.fundamental) || ""), `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">Prev Invest</th><th class="r">Curr Invest</th><th class="r">Change</th><th class="r">Strength</th><th class="r">Latest + / −</th><th>Latest</th><th class="r">Cond + / −</th><th>Cond</th><th class="c">Score</th><th>Bias</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="r mut">${f(c.investPrev, 2)}</td><td class="r">${f(c.investCurr, 2)}</td><td class="r b ${cls(c.investChg)}">${sg(c.investChg, 2)}</td><td class="r">${f(c.investStrength, 2)}</td><td class="r">${f(c.latestPlus, 0)} / ${f(c.latestMinus, 0)}</td><td>${stateTag(c.latestState)}</td><td class="r">${f(c.condPlus, 0)} / ${f(c.condMinus, 0)}</td><td>${stateTag(c.condState)}</td><td class="c">${pill(c.fund)}</td><td>${biasTxt(c.fundBias)}</td></tr>`).join("")}</tbody></table></div>`, "Investogenie change vs last week = primary direction. Latest and Conditional use this week's net only (plus − minus). Sarmaaya figures are month-to-date and reset on the 1st.");
+    } else if (state.factor === "pulse") {
+      h += vPulse(w);
     } else if (state.factor === "cot") {
       h += vCOT(w);
     } else if (state.factor === "seas") {
@@ -289,6 +291,31 @@
       h += card("Macro overlay", esc((w.sources && w.sources.macro) || "Your weekly macro commentary, −2…+2"), `<div class="tw"><table><thead><tr><th>CCY</th><th class="c">Score</th><th>Rationale</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="c">${pill(c.macroRaw, 50)}</td><td class="wrap" style="white-space:normal">${esc(c.macroWhy || "")}</td></tr>`).join("")}</tbody></table></div>`);
     }
     return h;
+  }
+  function pulseData(w) {
+    const L = state.live;
+    if (L && L.week === w.id && L.pulse && L.pulse.rows && (!w.pulse || String(L.pulse.at) > String(w.pulse.at))) return Object.assign({ live: true }, L.pulse);
+    if (w.pulse) return w.pulse;
+    if (!(w.currencies || []).some((c) => isNum(c.condPlus))) return null;
+    return { at: null, rows: w.currencies.map((c) => ({ ccy: c.ccy, prevPlus: c.condPlus, prevMinus: c.condMinus, days: [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0]], plus: c.condPlus, minus: c.condMinus,
+      lastPct: c.condPlus + c.condMinus ? (100 * c.condPlus) / (c.condPlus + c.condMinus) : null, curPct: c.condPlus + c.condMinus ? (100 * c.condPlus) / (c.condPlus + c.condMinus) : null, gain: 0,
+      condStatePrev: c.condState, condState: c.condState, fundPlan: c.fund, fund: c.fund })), events: [] };
+  }
+  function vPulse(w) {
+    const P = pulseData(w);
+    if (!P) return card("Investogenie Pulse", "", `<p class="mut">No Conditional counts for this week.</p>`);
+    const start = new Date(w.id + "T00:00:00Z");
+    const dn = [0, 1, 2, 3, 4].map((i) => { const d = new Date(start.getTime() + i * 864e5); return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" }); });
+    const pm = (a) => `<span class="up">${a[0] || 0}</span> / <span class="dn">${a[1] || 0}</span>`;
+    const rows = CCYS.map((c) => P.rows.find((r) => r.ccy === c)).filter(Boolean);
+    const tbl = `<div class="tw"><table><thead><tr class="grp"><th></th><th colspan="2">Previous (Sunday)</th><th colspan="5">This week + / −</th><th colspan="2">Total</th><th colspan="3">Positive share</th><th colspan="2">Model</th></tr>
+      <tr><th>CCY</th><th class="r">+</th><th class="r">−</th>${dn.map((d) => `<th class="c">${d}</th>`).join("")}<th class="r">+</th><th class="r">−</th><th class="r">Last wk</th><th class="r">Now</th><th class="r">Gain</th><th>Cond</th><th class="c">Fund (plan → now)</th></tr></thead>
+      <tbody>${rows.map((r) => `<tr><td class="ccy">${r.ccy}</td><td class="r up">${f(r.prevPlus, 0)}</td><td class="r dn">${f(r.prevMinus, 0)}</td>${(r.days || []).map((d) => `<td class="c">${(d[0] || d[1]) ? pm(d) : '<span class="mut">·</span>'}</td>`).join("")}<td class="r b up">${f(r.plus, 0)}</td><td class="r b dn">${f(r.minus, 0)}</td><td class="r mut">${f(r.lastPct, 1)}</td><td class="r">${f(r.curPct, 1)}</td><td class="r b ${cls(r.gain)}">${isNum(r.gain) ? sg(Math.round(r.gain), 0) : "–"}</td><td>${stateTag(r.condState)}${r.condStatePrev && r.condState !== r.condStatePrev ? ` <span class="mut">was ${esc(String(r.condStatePrev).toLowerCase())}</span>` : ""}</td><td class="c">${isNum(r.fund) && isNum(r.fundPlan) && Math.abs(r.fund - r.fundPlan) > 1e-9 ? `${pill(r.fundPlan)} → ${pill(r.fund)}` : pill(r.fund)}</td></tr>`).join("")}</tbody></table></div>`;
+    const ev = (P.events || []).slice().sort((a, b) => String(b.utc).localeCompare(String(a.utc)));
+    const evt = ev.length ? `<div class="tw"><table><thead><tr><th>Time (PKT)</th><th>CCY</th><th>Event</th><th class="r">Actual</th><th class="r">Previous</th><th class="c">Count</th></tr></thead><tbody>${ev.map((e) => `<tr><td class="mut">${new Date(e.utc).toLocaleString("en-GB", { timeZone: "Asia/Karachi", weekday: "short", hour: "2-digit", minute: "2-digit" })}</td><td class="ccy">${esc(e.ccy)}</td><td>${esc(e.event)}</td><td class="r b">${esc(e.actual)}</td><td class="r mut">${esc(e.previous)}</td><td class="c">${e.sign > 0 ? '<span class="tag up">+1</span>' : e.sign < 0 ? '<span class="tag dn">−1</span>' : '<span class="mut">tie</span>'}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No tracked releases yet this week.</p>`;
+    const asof = P.at ? `${P.live ? "Live from MT5 monitor" : "Snapshot"} · ${new Date(P.at).toLocaleString("en-GB", { timeZone: "Asia/Karachi", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} PKT` : "Sunday counts only";
+    return card("Investogenie Pulse", asof, tbl, "Conditional +/− from Sunday plus each tracked release this week: actual above previous = +1, below = −1, tie ignored, flipped for unemployment and claims. Gain = (positive share now ÷ last week − 1) × 100. A new Conditional net re-scores the Fundamental layer with the same rules as the workbook, and that flows into strength and pair scores.")
+      + card("Releases counted this week", "Tracked event list from Sarmaaya Forex Currency Data (refreshed each Sunday)", evt);
   }
   function stateTag(s) { if (!s || s === "n/a") return `<span class="mut">–</span>`; return `<span class="tag ${s === "CONFIRM" ? "up" : s === "OPPOSE" ? "dn" : ""}">${esc(s.toLowerCase())}</span>`; }
 
