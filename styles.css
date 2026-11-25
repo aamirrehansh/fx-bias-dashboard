@@ -131,3 +131,11 @@ svg.chart text{fill:var(--muted);font-size:12px;font-family:var(--sans)}
   table{font-size:12.5px}
   tbody td{padding:9px 8px} thead th{padding:9px 8px}
 }
+
+.keybox{border:1px solid rgba(110,168,255,.35);background:var(--infobg);border-radius:16px;padding:14px 16px}
+.keybox.on{border:2px solid rgba(34,211,127,.7);background:var(--upbg);box-shadow:0 0 0 4px rgba(34,211,127,.08)}
+.kb-h{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-weight:700;font-size:15px;margin-bottom:8px}
+.kb-row{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;margin-top:8px;font-size:13px;background:rgba(0,0,0,.18);border:1px solid rgba(34,211,127,.35)}
+.kb-row.dn{border-color:rgba(255,90,110,.45)}
+.kb-row time{color:var(--muted);font-size:11px;white-space:nowrap}
+.kb-ic{font-size:16px;line-height:1.2}

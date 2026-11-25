@@ -83,7 +83,8 @@
       }
     });
     if (state.live && state.live.week === w.id) (state.live.alerts || []).forEach((a) => out.push({ lvl: a.level || "warn", pair: a.pair, text: a.text, at: a.at }));
-    return out;
+    // newest first; timed (live EA) alerts above the untimed snapshot summary
+    return out.map((a, i) => ({ a, i })).sort((x, y) => (y.a.at ? Date.parse(y.a.at) : -1) - (x.a.at ? Date.parse(x.a.at) : -1) || y.i - x.i).map((x) => x.a);
   }
 
   /* ---------- rates (ECB daily via frankfurter.dev, cached for offline) ---------- */
@@ -227,9 +228,12 @@
       <div class="kpi"><div class="l">Strongest / weakest</div><div class="v"><span class="up">${cs[0] ? cs[0].ccy : "–"}</span> <span class="mut" style="font-size:15px">vs</span> <span class="dn">${cs[cs.length - 1] ? cs[cs.length - 1].ccy : "–"}</span></div><div class="s">${cs[0] ? sg(cs[0].strength) : ""} / ${cs.length ? sg(cs[cs.length - 1].strength) : ""}</div></div>
       <div class="kpi"><div class="l">Plan result ${perf && perf.plan.length && perf.plan[0].r ? "(" + perf.plan[0].r.src + ")" : ""}</div><div class="v ${perf ? cls(perf.planPips) : "mut"}">${perf && perf.planHit !== null && perf.plan.some((x) => x.r) ? sg(perf.planPips, 0) + " pips" : "–"}</div><div class="s">${perf && perf.planHit !== null && perf.plan.some((x) => x.r) ? Math.round(perf.planHit * 100) + "% of trades in profit (ECB daily)" : "Waiting for price data"}</div></div>
     </div>`;
+    const isKey = (a) => /NEW SETUP|BIAS FLIPPED/.test(a.text);
+    const listAl = al.filter((a) => !isKey(a));
     let ab = "";
-    if (al.length) ab = al.map((a) => `<div class="alert ${a.lvl === "ok" ? "ok" : a.lvl === "info" ? "info" : ""}"><div>${a.lvl === "dn" ? "⛔" : a.lvl === "ok" ? "✅" : "⚠️"}</div><div style="flex:1">${esc(a.text)}</div>${a.at ? `<time>${new Date(a.at).toLocaleTimeString()}</time>` : ""}</div>`).join("");
-    else ab = `<div class="alert ok"><div>✅</div><div>No changes to the shortlisted pairs since the Sunday plan${s.at ? " (last check " + new Date(s.at).toLocaleString() + ")" : ""}.</div></div>`;
+    if (listAl.length) ab = listAl.map((a) => `<div class="alert ${a.lvl === "ok" ? "ok" : a.lvl === "info" ? "info" : ""}"><div>${a.lvl === "dn" ? "⛔" : a.lvl === "ok" ? "✅" : "⚠️"}</div><div style="flex:1">${esc(a.text)}</div>${a.at ? `<time>${new Date(a.at).toLocaleTimeString()}</time>` : ""}</div>`).join("");
+    else ab = `<div class="alert ok"><div>✅</div><div>No other changes to the shortlisted pairs since the Sunday plan${s.at ? " (last check " + new Date(s.at).toLocaleString() + ")" : ""}.</div></div>`;
+    h += vKeyBox(w, al.filter(isKey));
     h += `<div class="grid g2" style="margin-top:16px">${card("Alerts", "Shortlisted pairs whose score or bias changed after news releases", ab, state.live ? "" : "Live alerts need the MT5 monitor EA running (see About). Without it, this shows saved intra-week updates only.")}`;
     h += card("Currency strength", "Plan strength, with intra-week change", `<div class="tw"><table><thead><tr><th>#</th><th>CCY</th><th class="r">Score</th><th>Strength</th><th class="r">Last wk</th><th>Bias</th></tr></thead><tbody>${cs.map((c, i) => {
       const lw = pw && (pw.currencies || []).find((x) => x.ccy === c.ccy);
@@ -317,6 +321,18 @@
     const asof = P.at ? `${P.live ? "Live from MT5 monitor" : "Snapshot"} · ${new Date(P.at).toLocaleString("en-GB", { timeZone: "Asia/Karachi", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} PKT` : "Sunday counts only";
     return card("Investogenie Pulse", asof, tbl, "Conditional +/− from Sunday plus each tracked release this week: actual above previous = +1, below = −1, tie ignored, flipped for unemployment and claims. Gain = (positive share now ÷ last week − 1) × 100. A new Conditional net re-scores the Fundamental layer with the same rules as the workbook, and that flows into strength and pair scores.")
       + card("Releases counted this week", "Tracked event list from Sarmaaya Forex Currency Data (refreshed each Sunday)", evt);
+  }
+  function vKeyBox(w, keyAl) {
+    const L = state.live;
+    if (!L || L.week !== w.id) return "";
+    const entries = (Array.isArray(L.setups) ? L.setups : []).filter((r) => r.entry);
+    const t = (a) => a.at ? `<time>${new Date(a.at).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</time>` : "";
+    const now = entries.map((r) => `<div class="kb-row up click" data-pair="${esc(r.pair)}"><span class="kb-ic">🎯</span><div style="flex:1"><b>${esc(r.pair)} ${r.bias}</b> <span class="mut">score ${sg(r.score)}</span><br><span>${esc(r.status)}</span>${isNum(r.h1Fail) ? ` <span class="mut">· SL beyond ${r.h1Fail}</span>` : ""}</div><span class="tag up">ENTRY NOW</span></div>`).join("");
+    const hist = keyAl.map((a) => `<div class="kb-row ${/BIAS FLIPPED/.test(a.text) ? "dn" : "up"}"><span class="kb-ic">${/BIAS FLIPPED/.test(a.text) ? "🔄" : "🔔"}</span><div style="flex:1">${esc(a.text)}</div>${t(a)}</div>`).join("");
+    const n = entries.length;
+    const head = n ? `${n} entry setup${n === 1 ? "" : "s"} ready now` : "No entry setup right now";
+    const empty = !now && !hist ? `<div class="mut" style="font-size:13px">The scanner checks every pair with a live |score| ≥ 50 at each H1 close. New setups and bias flips will appear here first${L.at ? " · last update " + new Date(L.at).toLocaleTimeString() : ""}.</div>` : "";
+    return `<section class="keybox ${n ? "on" : ""}" style="margin-top:16px"><div class="kb-h"><span>🎯 New setups &amp; bias flips</span><span class="mut" style="font-weight:500">${head}</span></div>${now}${hist}${empty}</section>`;
   }
   function vSetups(w) {
     const L = state.live;
