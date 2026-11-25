@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>FX Weekly Bias</title>
+<meta name="description" content="Weekly currency bias model: currencies, factors, pairs, news, history and performance. Works offline.">
+<meta name="theme-color" content="#121419">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FX Bias">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><div class="logo">FX</div><div>Weekly Bias<small>Sarmaaya model · offline</small></div></div>
+    <div class="spacer"></div>
+    <span class="status-dot" id="liveDot"><i></i><span>…</span></span>
+    <select class="week" id="weekSel" aria-label="Week"></select>
+  </div>
+  <nav class="tabs" id="tabs"></nav>
+</header>
+<main id="main"></main>
+<div class="drawer" id="drawer"><div class="panel"></div></div>
+<script src="data/weeks.js"></script>
+<script src="data/rates.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

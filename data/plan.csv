@@ -1,0 +1,72 @@
+WEEK,2026-11-23,2026-11-27,23–27 Nov 2026
+W,0.4,0.2,0.1,0.15,0.15
+C,USD,0.375,-0.5,-0.5,-0.1875,0,-2.8125
+C,EUR,-0.125,-0.5,0.5,0,0,-10
+C,GBP,0.375,1,1,0.6,-0.5,46.5
+C,JPY,0.375,-1,1,0.5,1,27.5
+C,CHF,0.25,0.5,0.5,0,0.5,32.5
+C,CAD,-0.25,-1,0.5,0.25,0,-21.25
+C,AUD,-0.375,-0.75,1,1,-1,-20
+C,NZD,0,-0.75,1,0.5,-0.5,-5
+N,2026-11-23,02:45,NZD,Low,1,0.5,0.8,0.7,0.5,Core Retail Sales q/q (New Zealand)
+N,2026-11-23,02:45,NZD,Low,1,0.5,0.5,-0.5,0.5,Retail Sales q/q (New Zealand)
+N,2026-11-23,13:15,EUR,High,1,1,49.8,49.5,1,S&P Global Manufacturing PMI (France) *theme
+N,2026-11-23,13:30,EUR,High,1,1,54.1,54.2,-1,S&P Global Manufacturing PMI (Germany) *theme
+N,2026-11-23,13:30,EUR,High,1,1,52.4,52.5,-1,S&P Global Services PMI (Germany) *theme
+N,2026-11-23,14:00,EUR,High,1,1,52.7,52.7,0,S&P Global Manufacturing PMI (Euro Area) *theme
+N,2026-11-23,14:00,EUR,High,1,1,51.8,51.4,1,S&P Global Services PMI (Euro Area) *theme
+N,2026-11-23,14:30,GBP,High,1,1,53,52.8,1,S&P Global/CIPS Manufacturing PMI (United Kingdom) *theme
+N,2026-11-23,14:30,GBP,High,1,1,53,52.8,1,S&P Global/CIPS Services PMI (United Kingdom) *theme
+N,2026-11-23,19:45,USD,High,1,1,54.5,54.9,-1,S&P Global Manufacturing PMI (United States) *theme
+N,2026-11-23,19:45,USD,High,1,1,55.6,56.1,-1,S&P Global Services PMI (United States) *theme
+N,2026-11-24,05:30,JPY,Low,1,0.5,53.5,53.3,0.5,au Jibun Bank Manufacturing PMI (Japan)
+N,2026-11-24,14:00,EUR,Low,1,0.5,90.6,90.2,0.5,Ifo Business Climate (Germany)
+N,2026-11-24,16:00,GBP,Low,1,0.5,-24,-10,-0.5,CBI Realized Sales (United Kingdom) (not in MQL5)
+N,2026-11-24,20:00,USD,Medium,1,0.5,92.1,91.7,0.5,CB Consumer Confidence Index (United States)
+N,2026-11-24,20:00,USD,Low,1,0.5,-3,-2,-0.5,Richmond Fed Manufacturing Index (United States)
+N,2026-11-25,04:50,JPY,Low,1,0.5,3.6,3.7,-0.5,BoJ Corporate Services Price Index y/y (Japan)
+N,2026-11-25,05:30,AUD,Low,1,0.5,0.8,-2.1,0.5,Construction Work Done q/q (Australia)
+N,2026-11-25,05:30,AUD,High,1,1,4.8,4.3,1,CPI y/y (Australia) *FF red  not in PDF
+N,2026-11-25,10:00,JPY,Low,1,0.5,2.5,2.4,0.5,BoJ Trimmed Mean Core CPI y/y (Japan) (verify)
+N,2026-11-25,18:30,USD,High,1,1,0.3,0.3,0,Core PCE Price Index m/m (United States) *theme
+N,2026-11-25,18:30,USD,Medium,-1,0.5,201,203,0.5,Initial Jobless Claims (United States)
+N,2026-11-25,18:30,USD,Low,1,0.5,0.5,0.5,0,Core Durable Goods Orders m/m (United States)
+N,2026-11-25,18:30,USD,Low,1,0.5,0.5,1.9,-0.5,Durable Goods Orders m/m (United States)
+N,2026-11-25,18:30,USD,Low,1,0.5,0.4,0.2,0.5,Personal Income m/m (United States)
+N,2026-11-25,18:30,USD,Low,1,0.5,0.4,0.5,-0.5,Personal Spending m/m (United States)
+N,2026-11-25,18:30,USD,High,1,1,3.5,3.4,1,GDP q/q (United States) *FF red  not in PDF
+N,2026-11-25,20:00,USD,Low,1,0.5,649,676,-0.5,New Home Sales (United States)
+N,2026-11-26,05:30,AUD,Low,1,0.5,4.4,-3.6,0.5,Private New Capital Expenditure q/q (Australia)
+N,2026-11-26,12:00,EUR,Low,1,0.5,-29.4,-30.8,0.5,GfK Consumer Climate (Germany)
+N,2026-11-27,04:30,JPY,Medium,1,0.5,2.9,2.6,0.5,Tokyo Core CPI y/y (Japan)
+N,2026-11-27,13:00,EUR,Low,1,0.5,4.8,4.9,-0.5,CPI y/y (Spain)
+N,2026-11-27,13:55,EUR,Low,-1,0.5,5,4,-0.5,Unemployment Change (Germany)
+N,2026-11-27,18:30,CAD,Low,1,0.5,9.6,8.8,0.5,Current Account (Canada)
+P,GBPCAD,BUY,TRADE,67.75,0.005,1.80213,1.87268
+P,GBPAUD,BUY,WATCH,66.5,0,1.87323,1.95798
+P,EURGBP,SELL,WATCH,-56.5,0,0.86122,0.83244
+P,CADCHF,SELL,WATCH,-53.75,0,0.57878,0.59017
+P,AUDCHF,SELL,WATCH,-52.5,0,0.58826,0.5712
+P,GBPNZD,BUY,WATCH,51.5,0,2.27838,2.40666
+P,GBPUSD,BUY,NO,49.3125,0,1.30102,1.3173
+P,CADJPY,SELL,TRADE,-48.75,0.01,115.588,111.98
+P,AUDJPY,SELL,NO,-47.5,0,111.568,107.435
+P,EURCHF,SELL,NO,-42.5,0,0.94862,0.9275
+P,EURJPY,SELL,NO,-37.5,0,178.48,176.076
+P,NZDCHF,SELL,NO,-37.5,0,0.48003,0.46412
+P,USDCHF,SELL,NO,-35.3125,0,0.81276,0.83802
+P,NZDJPY,SELL,NO,-32.5,0,95.436,88.484
+P,USDJPY,SELL,NO,-30.3125,0,156.076,160.394
+P,GBPJPY,BUY,NO,19,0,217.478,210.663
+P,USDCAD,BUY,NO,18.4375,0,1.39298,1.42727
+P,AUDUSD,SELL,NO,-17.1875,0,0.70681,0.66824
+P,NZDCAD,BUY,NO,16.25,0,0.83304,0.77872
+P,AUDNZD,SELL,NO,-15,0,1.26028,1.21581
+P,GBPCHF,BUY,NO,14,0,1.12068,1.09762
+P,EURCAD,BUY,NO,11.25,0,1.62486,1.56583
+P,EURAUD,BUY,NO,10,0,1.57761,1.644
+P,EURUSD,SELL,NO,-7.1875,0,1.12731,1.10236
+P,CHFJPY,BUY,NO,5,0,199.082,190.012
+P,EURNZD,SELL,TRADE,-5,0.01,2.03131,1.9933
+P,NZDUSD,SELL,NO,-2.1875,0,0.57103,0.5512
+P,AUDCAD,BUY,NO,1.25,0,1.00129,0.95686
