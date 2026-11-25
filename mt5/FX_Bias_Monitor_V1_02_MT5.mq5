@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| FX_Bias_Monitor_V1_01_MT5.mq5                                    |
+//| FX_Bias_Monitor_V1_02_MT5.mq5                                    |
 //| Live monitor for the weekly Sarmaaya bias model. Does NOT trade. |
 //|  - downloads this week's plan (data/plan.csv) from GitHub        |
 //|  - reads news actuals from the MT5 economic calendar             |
@@ -11,11 +11,12 @@
 //| Setup: Tools > Options > Expert Advisors > Allow WebRequest for: |
 //|   https://raw.githubusercontent.com                              |
 //|   https://api.github.com                                         |
+//|   https://www.forexfactory.com   (actuals fallback, V1.02)        |
 //| Tools > Options > Notifications: enable + your MetaQuotes ID.    |
 //| Attach to ONE chart (any symbol, any timeframe).                 |
 //+------------------------------------------------------------------+
 #property copyright "FX28 weekly model"
-#property version   "1.01"
+#property version   "1.02"
 #property strict
 
 input string PlanURL        = "https://raw.githubusercontent.com/aamirrehansh/fx-bias-dashboard/main/data/plan.csv";
@@ -31,6 +32,8 @@ input string GitHubToken    = "";      // fine-grained token: Contents read/writ
 input string GitHubRepo     = "aamirrehansh/fx-bias-dashboard";
 input string GitHubBranch   = "live";
 input int    PublishMinutes = 10;      // upload live.json at most every N minutes (and on any alert)
+input bool   UseForexFactory= true;    // read actuals from forexfactory.com when the MT5 calendar has none
+input int    FFPollSeconds  = 90;      // FF poll interval while a released event is still missing
 
 //--- model data
 string   CCY[8] = {"USD","EUR","GBP","JPY","CHF","CAD","AUD","NZD"};
@@ -63,7 +66,8 @@ PairRow  gPairs[];
 
 string   gAlerts[];          // JSON alert objects for live.json (newest last)
 string   gPushQueue[];
-datetime gLastPush=0, gLastPlan=0, gLastPublish=0;
+datetime gLastPush=0, gLastPlan=0, gLastPublish=0, gLastFF=0;
+bool     gFFWarned=false;
 bool     gDirty=true;
 string   gLiveSha="";
 
@@ -96,6 +100,7 @@ void OnTimer()
    {
       MatchNews();
       UpdateNews();
+      if(UseForexFactory) UpdateFromFF();
       Recompute();
       CheckAlerts();
       CheckPrices();
@@ -299,8 +304,16 @@ void UpdateNews()
          s=Sgn(act-gNews[i].fc)*gNews[i].pol*gNews[i].w;
       else if(v.impact_type==CALENDAR_IMPACT_POSITIVE) s= gNews[i].w;
       else if(v.impact_type==CALENDAR_IMPACT_NEGATIVE) s=-gNews[i].w;
+      ApplyRelease(i,act,s,"MT5");
+   }
+}
+
+void ApplyRelease(const int i,const double act,const double s,const string src)
+{
+   {
       gNews[i].released=true; gNews[i].actual=act; gNews[i].score=s;
-      gDirty=true;
+      gDirty=true; gLastPublish=0;
+      PrintFormat("Released (%s): %s %s actual %s -> event score %+.2f",src,gNews[i].ccy,gNews[i].name,DoubleToString(act,2),s);
       int c=CcyIdx(gNews[i].ccy);
       double before=(c>=0 ? cStr[c] : 0);
       Recompute();
@@ -310,6 +323,83 @@ void UpdateNews()
                gNews[i].ccy,gNews[i].name,DoubleToString(act,2),(gNews[i].fc==EMPTY_VALUE?"-":DoubleToString(gNews[i].fc,2)),s,gNews[i].ccy,before,cStr[c]));
    }
 }
+//+------------------------------------------------------------------+
+//| Forex Factory fallback: calendar page embeds the events as JSON   |
+//+------------------------------------------------------------------+
+string FFField(const string chunk,const string key)
+{
+   string k="\""+key+"\":";
+   int p=StringFind(chunk,k); if(p<0) return "";
+   p+=StringLen(k);
+   if(StringGetCharacter(chunk,p)=='"')
+   {
+      int e=StringFind(chunk,"\"",p+1); if(e<0) return "";
+      string v=StringSubstr(chunk,p+1,e-p-1); StringReplace(v,"\\/","/"); return v;
+   }
+   int e1=StringFind(chunk,",",p), e2=StringFind(chunk,"}",p);
+   int e=(e1<0 ? e2 : (e2<0 ? e1 : MathMin(e1,e2))); if(e<0) return "";
+   return StringSubstr(chunk,p,e-p);
+}
+double FFNum(const string v)
+{
+   string t=v; StringReplace(t,"%",""); StringReplace(t,"K",""); StringReplace(t,"M",""); StringReplace(t,"B",""); StringReplace(t,"T","");
+   StringReplace(t,"<",""); StringReplace(t,">",""); StringReplace(t,",",""); StringTrimLeft(t); StringTrimRight(t);
+   if(t=="") return EMPTY_VALUE;
+   return StringToDouble(t);
+}
+string FFNorm(const string s)
+{
+   string r=" "+NormName(s)+" ";
+   string stop[]={"s p","s","p","global","cips","flash","prelim","final","german","french","spanish","italian","au","jibun","bank","boj","cb","the","of","fed","initial","jobless","unemployment","index"};
+   for(int i=0;i<ArraySize(stop);i++) StringReplace(r," "+stop[i]+" "," ");
+   StringTrimLeft(r); StringTrimRight(r);
+   return r;
+}
+
+void UpdateFromFF()
+{
+   bool need=false;
+   for(int i=0;i<ArraySize(gNews);i++) if(!gNews[i].released && gNews[i].tUtc<=TimeGMT()-60 && gNews[i].tUtc>TimeGMT()-6*86400) { need=true; break; }
+   if(!need || TimeGMT()-gLastFF<FFPollSeconds) return;
+   gLastFF=TimeGMT();
+   char data[], res[]; string rh;
+   string hdr="User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36\r\nAccept: text/html\r\nAccept-Language: en-US,en;q=0.9\r\n";
+   ResetLastError();
+   int code=WebRequest("GET","https://www.forexfactory.com/calendar?week=this",hdr,15000,data,res,rh);
+   if(code!=200)
+   {
+      if(!gFFWarned){ PrintFormat("Forex Factory fetch failed: HTTP %d err %d (add https://www.forexfactory.com to WebRequest URLs)",code,GetLastError()); gFFWarned=true; }
+      return;
+   }
+   string page=CharArrayToString(res,0,WHOLE_ARRAY,CP_UTF8);
+   string chunks[]; int n=StringSplit(page,'{',chunks);
+   int got=0;
+   for(int i=0;i<ArraySize(gNews);i++)
+   {
+      if(gNews[i].released || gNews[i].tUtc>TimeGMT()-60) continue;
+      string want=FFNorm(gNews[i].name);
+      double best=-1; string bAct="", bFc="";
+      for(int c=0;c<n;c++)
+      {
+         if(StringFind(chunks[c],"\"dateline\":")<0 || StringFind(chunks[c],"\"actual\":")<0) continue;
+         if(FFField(chunks[c],"currency")!=gNews[i].ccy) continue;
+         long dl=StringToInteger(FFField(chunks[c],"dateline"));
+         if(MathAbs((double)(dl-(long)gNews[i].tUtc))>900) continue;
+         string act=FFField(chunks[c],"actual"); if(act=="") continue;
+         double sc=Similar(want,FFNorm(FFField(chunks[c],"name")));
+         if(sc>best){ best=sc; bAct=act; bFc=FFField(chunks[c],"forecast"); }
+      }
+      if(best<0.34) continue;
+      double a=FFNum(bAct), f=FFNum(bFc);
+      if(a==EMPTY_VALUE) continue;
+      if(f==EMPTY_VALUE) f=gNews[i].fc;
+      double s=(f==EMPTY_VALUE ? 0 : Sgn(a-f)*gNews[i].pol*gNews[i].w);
+      ApplyRelease(i,a,s,"ForexFactory");
+      got++;
+   }
+   if(got>0){ Recompute(); CheckAlerts(); }
+}
+
 bool CcyInShort(const string c)
 {
    for(int i=0;i<ArraySize(gPairs);i++) if(IsShort(gPairs[i].tier) && (StringSubstr(gPairs[i].pair,0,3)==c || StringSubstr(gPairs[i].pair,3,3)==c)) return true;
@@ -438,7 +528,7 @@ void FlushPush()
 //+------------------------------------------------------------------+
 string BuildJson()
 {
-   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.01\",\"currencies\":[";
+   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.02\",\"currencies\":[";
    for(int c=0;c<8;c++)
       j+=StringFormat("%s{\"ccy\":\"%s\",\"news\":%s,\"strength\":%s}",(c?",":""),CCY[c],D2S(cNews[c],4),D2S(cStr[c],3));
    j+="],\"pairs\":[";
@@ -522,7 +612,7 @@ void PublishGitHub(const string json)
 //+------------------------------------------------------------------+
 void Panel()
 {
-   string s="FX Bias Monitor 1.01 | "+gWeekLabel+" | news released: ";
+   string s="FX Bias Monitor 1.02 | "+gWeekLabel+" | news released: ";
    int rel=0, mat=0; for(int i=0;i<ArraySize(gNews);i++){ if(gNews[i].released) rel++; if(gNews[i].matched) mat++; }
    s+=IntegerToString(rel)+"/"+IntegerToString(ArraySize(gNews))+" (matched "+IntegerToString(mat)+")\n";
    s+="Strength: ";

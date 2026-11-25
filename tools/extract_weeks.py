@@ -20,7 +20,8 @@ WEEKS = [
     ("2026-11-09", "9–13 Nov 2026", "Final_Weekly_Model_9-13_Nov_2026.xlsx", "final", {}),
     ("2026-11-16", "16–20 Nov 2026", "Final_Weekly_Model_16-20_Nov_2026.xlsx", "final", {"calc": "f1620.xlsx"}),
     ("2026-11-23", "23–27 Nov 2026", "Final_Weekly_Model_23-27_Nov_2026.xlsx", "final",
-     {"updates": [("2026-11-25T12:00:00Z", "u25.xlsx", "News actuals re-scored 25-Nov ~17:00 PKT (US Core PCE/GDP not out yet). Gate unchanged from 22-Nov.", 20)]}),
+     {"updates": [("2026-11-25T12:00:00Z", "u25.xlsx", "News actuals re-scored 25-Nov ~17:00 PKT (US Core PCE/GDP not out yet). Gate unchanged from 22-Nov.", 20)],
+      "actuals": [("2026-11-25T13:40:00Z", "data/2026-11-25/actuals_ff.csv", "Forex Factory actuals incl. US 18:30 PKT releases (Core PCE, GDP, claims, durables, income/spending).")]}),
 ]
 
 
@@ -289,6 +290,39 @@ def extract_opt2(wb):
             "notes": notes, "sources": {"cot": first_note(wb["COT"])}}
 
 
+def rescore_from_actuals(week, path, ts, note):
+    """Re-score News from a CSV of released actuals (date,ccy,event_starts,actual,forecast) and
+    rebuild currency strength / pair scores exactly like the workbook (sum / MAX(weight, Settings B41))."""
+    import csv
+    acts = list(csv.DictReader(open(path)))
+    news = [dict(n) for n in week.get("news", [])]
+    for n in news:
+        n["actual"] = None
+        for a in acts:
+            if a["date"] == n["date"] and a["ccy"] == n["ccy"] and str(n["event"]).startswith(a["event_starts"]):
+                act, fc = float(a["actual"]), float(a["forecast"])
+                n["actual"], n["forecast"] = act, fc
+                d = act - fc
+                n["score"] = (0 if d == 0 else (1 if d > 0 else -1)) * (n["polarity"] or 1) * (n["weight"] or 0.5)
+                break
+    minw = week["weights"].get("newsMinW", 2) or 2
+    wt = week["weights"]
+    cur = []
+    for c in week["currencies"]:
+        rows = [n for n in news if n["ccy"] == c["ccy"] and n.get("weight") is not None]
+        sw = sum(n["weight"] for n in rows)
+        ns = sum(n["score"] or 0 for n in rows) / max(sw, minw)
+        st = 100 * (wt["fund"] * c["fund"] + wt["cot"] * c["cot"] + wt["seas"] * c["seas"] + wt["news"] * ns + wt["macro"] * c["macro"])
+        cur.append({"ccy": c["ccy"], "fund": c["fund"], "cot": c["cot"], "seas": c["seas"], "news": round(ns, 6), "macro": c["macro"], "strength": round(st, 6)})
+    order = sorted(cur, key=lambda x: -x["strength"])
+    for i, c in enumerate(order):
+        c["rank"] = i + 1
+    smap = {c["ccy"]: c["strength"] for c in cur}
+    pairs = [{"pair": p["pair"], "score": round(smap[p["pair"][:3]] - smap[p["pair"][3:]], 6),
+              "bias": "BUY" if smap[p["pair"][:3]] - smap[p["pair"][3:]] >= 0 else "SELL"} for p in week["pairs"]]
+    return {"at": ts, "note": note, "currencies": cur, "pairs": pairs, "news": news}
+
+
 def monday_to_friday(mid):
     d = dt.date.fromisoformat(mid)
     return (d + dt.timedelta(days=4)).isoformat()
@@ -346,6 +380,8 @@ def main(out):
                 ups.append({"at": ts, "note": note, "currencies": [{k: c[k] for k in ("ccy", "fund", "cot", "seas", "news", "macro", "strength", "rank")} for c in b["currencies"]],
                             "pairs": [{"pair": x["pair"], "bias": x["bias"], "score": x["score"]} for x in b["pairs"]],
                             "news": b["news"]})
+        for ts, csvp, note in extra.get("actuals", []):
+            ups.append(rescore_from_actuals(base, os.path.join(PF, csvp), ts, note))
         base["updates"] = ups
         weeks.append(base)
     write_plan(weeks, os.path.join(os.path.dirname(out), "plan.csv"))
