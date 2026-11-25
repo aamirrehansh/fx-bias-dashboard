@@ -24,7 +24,7 @@
     wk: LS.get("fx_wk", null),
     tab: LS.get("fx_tab", "overview"),
     pairFilter: LS.get("fx_pf", "short"),
-    cotCcy: LS.get("fx_cotccy", "USD"),
+    cotCcy: LS.get("fx_cotccy2", "ALL"),
     factor: LS.get("fx_factor", "fund"),
     live: null, liveErr: null, rates: LS.get("fx_rates", { at: 0, data: {} }),
   };
@@ -347,12 +347,26 @@
 
   function vCOT(w) {
     const c = state.cotCcy;
+    const segBar = `<div class="toolbar"><div class="seg">${["ALL", ...CCYS].map((k) => `<button data-cot="${k}" class="${k === c ? "on" : ""}">${k === "ALL" ? "All" : k}</button>`).join("")}</div></div>`;
+    if (c === "ALL") {
+      const date = w.sources && w.sources.cotDates && w.sources.cotDates[1];
+      const pw = prevWeek(w);
+      const rows = CCYS.map((k) => ({ k, r: (w.currencies || []).find((y) => y.ccy === k) || {}, lr: pw && (pw.currencies || []).find((y) => y.ccy === k) }));
+      const body = segBar + `<div class="tw"><table><thead><tr class="grp"><th></th><th colspan="4">Net non-commercial</th><th colspan="3">COT RSI</th><th colspan="3">Model</th></tr><tr><th>CCY</th><th class="r">Net</th><th class="r">Prev</th><th class="r">Net Δ</th><th class="r">% Δ</th><th class="r">52</th><th class="r">26</th><th class="r">13</th><th>Signal</th><th class="c">COT score</th><th class="c">Last wk</th></tr></thead><tbody>${rows.map(({ k, r, lr }) => {
+        const pc = isNum(r.cotChg) && isNum(r.cotPrev) && r.cotPrev ? (r.cotChg / Math.abs(r.cotPrev)) * 100 : null;
+        return `<tr class="click" data-cot="${k}"><td class="ccy b">${k}</td><td class="r">${isNum(r.cotCurr) ? r.cotCurr.toLocaleString() : "–"}</td><td class="r mut">${isNum(r.cotPrev) ? r.cotPrev.toLocaleString() : "–"}</td><td class="r ${cls(r.cotChg)}">${isNum(r.cotChg) ? (r.cotChg > 0 ? "+" : "") + r.cotChg.toLocaleString() : "–"}</td><td class="r ${cls(pc)}">${sg(pc, 1)}${isNum(pc) ? "%" : ""}</td><td class="r">${rsiPill(r.rsi52)}</td><td class="r">${rsiPill(r.rsi26)}</td><td class="r">${rsiPill(r.rsi13)}</td><td>${r.cotReversal ? `<span class="tag warn">${esc(r.cotReversal)}</span>` : r.rsiExtreme ? `<span class="tag">${esc(r.rsiExtreme)}</span>` : ""}</td><td class="c">${pill(r.cot)}</td><td class="c">${lr ? pill(lr.cot) : "–"}</td></tr>`;
+      }).join("")}</tbody></table></div>`;
+      const hw = WEEKS.filter((x) => !x.missing && x.id <= w.id).slice(-6).reverse();
+      const hist = `<div class="tw"><table><thead><tr><th>CCY</th>${hw.map((x) => `<th class="c">${esc((x.sources && x.sources.cotDates && x.sources.cotDates[1]) || x.label)}</th>`).join("")}</tr></thead><tbody>${CCYS.map((k) => `<tr class="click" data-cot="${k}"><td class="ccy b">${k}</td>${hw.map((x) => { const r = (x.currencies || []).find((y) => y.ccy === k) || {}; return `<td class="c">${pill(r.cot)}<div class="mut" style="font-size:11px">${isNum(r.cotChg) ? (r.cotChg > 0 ? "+" : "") + r.cotChg.toLocaleString() : ""}</div></td>`; }).join("")}</tr>`).join("")}</tbody></table></div>`;
+      return card(`Weekly COT · all currencies`, `Report ${esc(date || "–")} · plan week ${esc(w.label)} · RSI ≤ 20 bullish extreme · ≥ 80 bearish extreme · tap a currency for its history`, body)
+        + `<div style="margin-top:16px">${card("COT score by week", "Latest report first · small number = net change", hist)}</div>`;
+    }
     const rows = WEEKS.filter((x) => !x.missing && x.id <= w.id).slice().reverse().map((x) => {
       const r = (x.currencies || []).find((y) => y.ccy === c) || {};
       const date = x.sources && x.sources.cotDates && x.sources.cotDates[1];
       return { x, r, date };
     });
-    const body = `<div class="toolbar"><div class="seg">${CCYS.map((k) => `<button data-cot="${k}" class="${k === c ? "on" : ""}">${k}</button>`).join("")}</div></div>
+    const body = segBar + `
       <div class="tw"><table><thead><tr class="grp"><th></th><th colspan="4">Net non-commercial</th><th colspan="3">COT RSI</th><th colspan="3">Model</th></tr><tr><th>Report date</th><th class="r">Net</th><th class="r">Prev</th><th class="r">Net Δ</th><th class="r">% Δ</th><th class="r">52</th><th class="r">26</th><th class="r">13</th><th>Signal</th><th class="c">COT score</th><th>Plan week</th></tr></thead><tbody>${rows.map(({ x, r, date }, i) => {
         const p = isNum(r.cotChg) && isNum(r.cotPrev) && r.cotPrev ? (r.cotChg / Math.abs(r.cotPrev)) * 100 : null;
         return `<tr><td class="b">${esc(date || "–")}${i === 0 ? '<span class="latest">Latest</span>' : ""}</td><td class="r">${isNum(r.cotCurr) ? r.cotCurr.toLocaleString() : "–"}</td><td class="r mut">${isNum(r.cotPrev) ? r.cotPrev.toLocaleString() : "–"}</td><td class="r ${cls(r.cotChg)}">${isNum(r.cotChg) ? (r.cotChg > 0 ? "+" : "") + r.cotChg.toLocaleString() : "–"}</td><td class="r ${cls(p)}">${sg(p, 1)}${isNum(p) ? "%" : ""}</td><td class="r">${rsiPill(r.rsi52)}</td><td class="r">${rsiPill(r.rsi26)}</td><td class="r">${rsiPill(r.rsi13)}</td><td>${r.cotReversal ? `<span class="tag warn">${esc(r.cotReversal)}</span>` : r.rsiExtreme ? `<span class="tag">${esc(r.rsiExtreme)}</span>` : ""}</td><td class="c">${pill(r.cot)}</td><td class="mut">${esc(x.label)}</td></tr>`;
@@ -522,7 +536,7 @@
     else if (t.dataset.pair) openPair(t.dataset.pair);
     else if (t.dataset.pf) { state.pairFilter = t.dataset.pf; LS.set("fx_pf", state.pairFilter); render(); }
     else if (t.dataset.factor) { state.factor = t.dataset.factor; LS.set("fx_factor", state.factor); render(); }
-    else if (t.dataset.cot) { state.cotCcy = t.dataset.cot; LS.set("fx_cotccy", state.cotCcy); render(); }
+    else if (t.dataset.cot) { state.cotCcy = t.dataset.cot; LS.set("fx_cotccy2", state.cotCcy); render(); }
     else if (t.dataset.week) { state.wk = t.dataset.week; LS.set("fx_wk", state.wk); state.tab = "overview"; render(); window.scrollTo(0, 0); }
   });
   document.addEventListener("change", (e) => { if (e.target.id === "weekSel") { state.wk = e.target.value; LS.set("fx_wk", state.wk); render(); } });
