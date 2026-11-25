@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| FX_Bias_Monitor_V1_02_MT5.mq5                                    |
+//| FX_Bias_Monitor_V1_03_MT5.mq5                                    |
 //| Live monitor for the weekly Sarmaaya bias model. Does NOT trade. |
 //|  - downloads this week's plan (data/plan.csv) from GitHub        |
 //|  - reads news actuals from the MT5 economic calendar             |
@@ -16,7 +16,7 @@
 //| Attach to ONE chart (any symbol, any timeframe).                 |
 //+------------------------------------------------------------------+
 #property copyright "FX28 weekly model"
-#property version   "1.02"
+#property version   "1.03"
 #property strict
 
 input string PlanURL        = "https://raw.githubusercontent.com/aamirrehansh/fx-bias-dashboard/main/data/plan.csv";
@@ -356,6 +356,21 @@ string FFNorm(const string s)
    return r;
 }
 
+// EUR events: our name says (Germany)/(France)/..., FF prefixes German/French/...
+bool SameCountry(const string ours,const string ff)
+{
+   string c=CountryOf(ours), f=ff; StringToLower(f);
+   string adj[]={"german","french","spanish","italian"}, cty[]={"germany","france","spain","italy"};
+   for(int k=0;k<4;k++)
+   {
+      bool ffHas=(StringFind(f,adj[k])==0);
+      if(c==cty[k]) return ffHas;                 // ours is Germany -> FF must say German
+      if(ffHas && c!="" ) return false;           // FF is German but ours is another country
+   }
+   if(c=="european union") { for(int k=0;k<4;k++) if(StringFind(f,adj[k])==0) return false; }
+   return true;
+}
+
 void UpdateFromFF()
 {
    bool need=false;
@@ -384,9 +399,12 @@ void UpdateFromFF()
          if(StringFind(chunks[c],"\"dateline\":")<0 || StringFind(chunks[c],"\"actual\":")<0) continue;
          if(FFField(chunks[c],"currency")!=gNews[i].ccy) continue;
          long dl=StringToInteger(FFField(chunks[c],"dateline"));
-         if(MathAbs((double)(dl-(long)gNews[i].tUtc))>900) continue;
+         double dt=MathAbs((double)(dl-(long)gNews[i].tUtc));
+         if(dt>300) continue;                                   // same release slot only (FR 13:15 vs DE 13:30 PKT)
          string act=FFField(chunks[c],"actual"); if(act=="") continue;
-         double sc=Similar(want,FFNorm(FFField(chunks[c],"name")));
+         string ffn=FFField(chunks[c],"name");
+         if(!SameCountry(gNews[i].name,ffn)) continue;
+         double sc=Similar(want,FFNorm(ffn))-dt/3600.0;
          if(sc>best){ best=sc; bAct=act; bFc=FFField(chunks[c],"forecast"); }
       }
       if(best<0.34) continue;
@@ -528,7 +546,7 @@ void FlushPush()
 //+------------------------------------------------------------------+
 string BuildJson()
 {
-   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.02\",\"currencies\":[";
+   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.03\",\"currencies\":[";
    for(int c=0;c<8;c++)
       j+=StringFormat("%s{\"ccy\":\"%s\",\"news\":%s,\"strength\":%s}",(c?",":""),CCY[c],D2S(cNews[c],4),D2S(cStr[c],3));
    j+="],\"pairs\":[";
@@ -612,7 +630,7 @@ void PublishGitHub(const string json)
 //+------------------------------------------------------------------+
 void Panel()
 {
-   string s="FX Bias Monitor 1.02 | "+gWeekLabel+" | news released: ";
+   string s="FX Bias Monitor 1.03 | "+gWeekLabel+" | news released: ";
    int rel=0, mat=0; for(int i=0;i<ArraySize(gNews);i++){ if(gNews[i].released) rel++; if(gNews[i].matched) mat++; }
    s+=IntegerToString(rel)+"/"+IntegerToString(ArraySize(gNews))+" (matched "+IntegerToString(mat)+")\n";
    s+="Strength: ";
