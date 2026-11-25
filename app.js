@@ -234,12 +234,6 @@
     if (listAl.length) ab = listAl.map((a) => `<div class="alert ${a.lvl === "ok" ? "ok" : a.lvl === "info" ? "info" : ""}"><div>${a.lvl === "dn" ? "⛔" : a.lvl === "ok" ? "✅" : "⚠️"}</div><div style="flex:1">${esc(a.text)}</div>${a.at ? `<time>${new Date(a.at).toLocaleTimeString()}</time>` : ""}</div>`).join("");
     else ab = `<div class="alert ok"><div>✅</div><div>No other changes to the shortlisted pairs since the Sunday plan${s.at ? " (last check " + new Date(s.at).toLocaleString() + ")" : ""}.</div></div>`;
     h += vKeyBox(w, al.filter(isKey));
-    h += `<div class="grid g2" style="margin-top:16px">${card("Alerts", "Shortlisted pairs whose score or bias changed after news releases", ab, state.live ? "" : "Live alerts need the MT5 monitor EA running (see About). Without it, this shows saved intra-week updates only.")}`;
-    h += card("Currency strength", "Plan strength, with intra-week change", `<div class="tw"><table><thead><tr><th>#</th><th>CCY</th><th class="r">Score</th><th>Strength</th><th class="r">Last wk</th><th>Bias</th></tr></thead><tbody>${cs.map((c, i) => {
-      const lw = pw && (pw.currencies || []).find((x) => x.ccy === c.ccy);
-      return `<tr class="click" data-go="currencies"><td class="mut">${i + 1}</td><td class="ccy ${cls(c.strength, 4)}">${c.ccy}</td><td class="r b ${cls(c.strength)}">${sg(c.strength)}</td><td>${bar(c.strength, 70)}</td><td class="r mut">${lw ? sg(lw.strength) : "–"}</td><td>${biasTxt(c.fundBias)}</td></tr>`;
-    }).join("")}</tbody></table></div>`) + `</div>`;
-    h += vSetups(w);
     h += `<section class="card" style="margin-top:16px"><h2>This week's shortlist<small>${trades.length} trade · tap a pair for levels</small></h2><p class="sub">Pips from last Friday's ECB fix to the latest price${state.live ? " (MT5 live)" : ""}.</p><div class="plan">${short.map((p) => {
       const r = pairResult(w, p);
       const chg = isNum(p.score) && isNum(p.planScore) && p.score !== p.planScore ? ` <span class="${cls(Math.abs(p.score) - Math.abs(p.planScore))}">(${sg(p.score)})</span>` : "";
@@ -248,8 +242,14 @@
         <div class="row"><span class="mut">Risk</span><b>${p.risk ? (p.risk * 100).toFixed(1) + "%" : "–"}</b></div>
         <div class="row"><span class="mut">Week so far</span><b class="${r ? cls(r.pips) : "mut"}">${r ? sg(r.pips, 0) + " pips" : "–"}</b></div>
         ${r && r.path.length > 1 ? `<div style="margin-top:6px">${spark(r.path.map((x) => x.v), 260, 26)}</div>` : ""}
-        <div class="meta">${esc(p.gate || "")}${p.timing && p.timing !== "-" ? "<br>" + esc(p.timing) : ""}</div></div>`;
+        <div class="meta">${liveGate(w, p)}${p.timing && p.timing !== "-" ? `<div class="mut" style="font-size:11px">${esc(p.timing)}</div>` : ""}</div></div>`;
     }).join("") || `<div class="empty">No shortlisted pairs this week.</div>`}</div></section>`;
+    h += `<div class="grid g2" style="margin-top:16px">${card("Alerts", "Shortlisted pairs whose score or bias changed after news releases", ab, state.live ? "" : "Live alerts need the MT5 monitor EA running (see About). Without it, this shows saved intra-week updates only.")}`;
+    h += card("Currency strength", "Plan strength, with intra-week change", `<div class="tw"><table><thead><tr><th>#</th><th>CCY</th><th class="r">Score</th><th>Strength</th><th class="r">Last wk</th><th>Bias</th></tr></thead><tbody>${cs.map((c, i) => {
+      const lw = pw && (pw.currencies || []).find((x) => x.ccy === c.ccy);
+      return `<tr class="click" data-go="currencies"><td class="mut">${i + 1}</td><td class="ccy ${cls(c.strength, 4)}">${c.ccy}</td><td class="r b ${cls(c.strength)}">${sg(c.strength)}</td><td>${bar(c.strength, 70)}</td><td class="r mut">${lw ? sg(lw.strength) : "–"}</td><td>${biasTxt(c.fundBias)}</td></tr>`;
+    }).join("")}</tbody></table></div>`) + `</div>`;
+    h += vSetups(w);
     if (w.notes && w.notes.length) h += `<section class="card" style="margin-top:16px"><h2>Notes</h2>${w.notes.map((n) => `<p class="note" style="margin:8px 0">${esc(n)}</p>`).join("")}</section>`;
     return h;
   }
@@ -331,7 +331,7 @@
     const hist = keyAl.map((a) => `<div class="kb-row ${/BIAS FLIPPED/.test(a.text) ? "dn" : "up"}"><span class="kb-ic">${/BIAS FLIPPED/.test(a.text) ? "🔄" : "🔔"}</span><div style="flex:1">${esc(a.text)}</div>${t(a)}</div>`).join("");
     const n = entries.length;
     const head = n ? `${n} entry setup${n === 1 ? "" : "s"} ready now` : "No entry setup right now";
-    const empty = !now && !hist ? `<div class="mut" style="font-size:13px">The scanner checks every pair with a live |score| ≥ 50 at each H1 close. New setups and bias flips will appear here first${L.at ? " · last update " + new Date(L.at).toLocaleTimeString() : ""}.</div>` : "";
+    const empty = !now && !hist ? `<div class="mut" style="font-size:13px">The scanner checks every shortlisted pair, plus any pair with a live |score| ≥ 50, at each H1 close. New setups and bias flips will appear here first${L.at ? " · last update " + new Date(L.at).toLocaleTimeString() : ""}.</div>` : "";
     return `<section class="keybox ${n ? "on" : ""}" style="margin-top:16px"><div class="kb-h"><span>🎯 New setups &amp; bias flips</span><span class="mut" style="font-weight:500">${head}</span></div>${now}${hist}${empty}</section>`;
   }
   function vSetups(w) {
