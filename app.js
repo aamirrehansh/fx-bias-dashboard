@@ -235,6 +235,7 @@
       const lw = pw && (pw.currencies || []).find((x) => x.ccy === c.ccy);
       return `<tr class="click" data-go="currencies"><td class="mut">${i + 1}</td><td class="ccy ${cls(c.strength, 4)}">${c.ccy}</td><td class="r b ${cls(c.strength)}">${sg(c.strength)}</td><td>${bar(c.strength, 70)}</td><td class="r mut">${lw ? sg(lw.strength) : "–"}</td><td>${biasTxt(c.fundBias)}</td></tr>`;
     }).join("")}</tbody></table></div>`) + `</div>`;
+    h += vSetups(w);
     h += `<section class="card" style="margin-top:16px"><h2>This week's shortlist<small>${trades.length} trade · tap a pair for levels</small></h2><p class="sub">Pips from last Friday's ECB fix to the latest price${state.live ? " (MT5 live)" : ""}.</p><div class="plan">${short.map((p) => {
       const r = pairResult(w, p);
       const chg = isNum(p.score) && isNum(p.planScore) && p.score !== p.planScore ? ` <span class="${cls(Math.abs(p.score) - Math.abs(p.planScore))}">(${sg(p.score)})</span>` : "";
@@ -316,6 +317,15 @@
     const asof = P.at ? `${P.live ? "Live from MT5 monitor" : "Snapshot"} · ${new Date(P.at).toLocaleString("en-GB", { timeZone: "Asia/Karachi", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} PKT` : "Sunday counts only";
     return card("Investogenie Pulse", asof, tbl, "Conditional +/− from Sunday plus each tracked release this week: actual above previous = +1, below = −1, tie ignored, flipped for unemployment and claims. Gain = (positive share now ÷ last week − 1) × 100. A new Conditional net re-scores the Fundamental layer with the same rules as the workbook, and that flows into strength and pair scores.")
       + card("Releases counted this week", "Tracked event list from Sarmaaya Forex Currency Data (refreshed each Sunday)", evt);
+  }
+  function vSetups(w) {
+    const L = state.live;
+    if (!L || L.week !== w.id || !Array.isArray(L.setups)) return "";
+    const rows = L.setups.slice().sort((a, b) => (b.entry - a.entry) || (b.ready - a.ready) || Math.abs(b.score) - Math.abs(a.score));
+    const tag = (r) => r.entry ? '<span class="tag up">ENTRY</span>' : r.ready ? '<span class="tag gold">ready</span>' : '<span class="tag">wait</span>';
+    const body = rows.length ? `<div class="tw"><table><thead><tr><th></th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>D1</th><th class="r">D1 pullback</th><th>H1</th><th class="r">H1 pullback</th><th class="r">SL beyond (H1)</th><th class="wrap">Status</th></tr></thead><tbody>${rows.map((r) => `<tr class="click" data-pair="${esc(r.pair)}"><td>${tag(r)}</td><td class="ccy">${esc(r.pair)}</td><td class="${r.bias === "BUY" ? "up" : "dn"} b">${r.bias}</td><td class="r b ${cls(r.score)}">${sg(r.score)}</td><td class="${r.d1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.d1Trend)}</td><td class="r">${isNum(r.d1Pct) && r.d1Pct ? f(r.d1Pct, 0) + "%" : "–"}</td><td class="${r.h1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.h1Trend)}</td><td class="r">${isNum(r.h1Pct) && r.h1Pct ? f(r.h1Pct, 0) + "%" : "–"}</td><td class="r mut">${isNum(r.h1Fail) ? r.h1Fail : "–"}</td><td class="wrap" style="white-space:normal">${esc(r.status)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No pair has a live |score| ≥ 50 right now.</p>`;
+    const n = rows.filter((r) => r.entry).length;
+    return `<div style="margin-top:16px">${card("Live setups", `Scanner · ${n} entry setup${n === 1 ? "" : "s"} · every H1 close · Dow Fib D1 + H1`, body, "All 28 pairs with a live |score| ≥ 50 run the Sunday gate: D1 Dow trend = bias, D1 pullback ≥ 50% (FULL) or 38.2–50% with H1 aligned (LOW). ENTRY = H1 pullback 50–100% with H1 aligned, or an H1 close beyond the H1 fail level. Check the chart before entering.")}</div>`;
   }
   function stateTag(s) { if (!s || s === "n/a") return `<span class="mut">–</span>`; return `<span class="tag ${s === "CONFIRM" ? "up" : s === "OPPOSE" ? "dn" : ""}">${esc(s.toLowerCase())}</span>`; }
 
