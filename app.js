@@ -234,7 +234,11 @@
     if (listAl.length) ab = listAl.map((a) => `<div class="alert ${a.lvl === "ok" ? "ok" : a.lvl === "info" ? "info" : ""}"><div>${a.lvl === "dn" ? "⛔" : a.lvl === "ok" ? "✅" : "⚠️"}</div><div style="flex:1">${esc(a.text)}</div>${a.at ? `<time>${new Date(a.at).toLocaleTimeString()}</time>` : ""}</div>`).join("");
     else ab = `<div class="alert ok"><div>✅</div><div>No other changes to the shortlisted pairs since the Sunday plan${s.at ? " (last check " + new Date(s.at).toLocaleString() + ")" : ""}.</div></div>`;
     h += vKeyBox(w, al.filter(isKey));
-    h += `<section class="card" style="margin-top:16px"><h2>This week's shortlist<small>${trades.length} trade · tap a pair for levels</small></h2><p class="sub">Pips from last Friday's ECB fix to the latest price${state.live ? " (MT5 live)" : ""}.</p><div class="plan">${short.map((p) => {
+    const LS_ = state.live && state.live.week === w.id && Array.isArray(state.live.setups) ? state.live.setups : null;
+    const liveOk = (p) => { const r = LS_ && LS_.find((x) => x.pair === p.pair); return r && (r.entry || r.ready); };
+    const shown = LS_ ? short.filter((p) => p.tier === "TRADE" || liveOk(p)) : short;
+    const hidden = short.length - shown.length;
+    h += `<section class="card" style="margin-top:16px"><h2>This week's shortlist<small>${trades.length} trade${LS_ ? ` · ${shown.length - trades.length} watch ready` : ""} · tap a pair for levels</small></h2><p class="sub">Pips from last Friday's ECB fix to the latest price${state.live ? " (MT5 live)" : ""}.${hidden ? ` Trade pairs always shown; watch pairs only when the live gate is ready or at entry. <span class="click" data-go="pairs" style="color:var(--info);text-decoration:underline;cursor:pointer">${hidden} watch pair${hidden === 1 ? "" : "s"} still waiting · see Pairs</span>` : ""}</p><div class="plan">${shown.map((p) => {
       const r = pairResult(w, p);
       const chg = isNum(p.score) && isNum(p.planScore) && p.score !== p.planScore ? ` <span class="${cls(Math.abs(p.score) - Math.abs(p.planScore))}">(${sg(p.score)})</span>` : "";
       return `<div class="pc" data-pair="${p.pair}"><div class="h"><span class="p">${p.pair}</span><span class="d ${p.planBias}">${p.planBias}</span><span class="spacer"></span>${tier(p.tier)}</div>
