@@ -64,7 +64,8 @@
   function mergeNews(base, upd) {
     const key = (n) => (n.date + "|" + n.ccy + "|" + String(n.event || "").toLowerCase().replace(/\s+/g, " ").slice(0, 40));
     const m = {}; upd.forEach((n) => (m[key(n)] = n));
-    return base.map((n) => { const u = m[key(n)]; if (!u) return n; const r = Object.assign({}, n, { actual: isNum(u.actual) ? u.actual : n.actual, liveScore: isNum(u.score) ? u.score : null }); if (r.liveScore === null && isNum(u.score) && u.score !== n.score) r.liveScore = u.score; return r; });
+    return base.map((n) => { const u = m[key(n)]; if (!u) return n; const rel = isNum(u.actual);
+      const r = Object.assign({}, n, { actual: rel ? u.actual : n.actual, forecast: rel && isNum(u.forecast) ? u.forecast : n.forecast, liveScore: isNum(u.score) ? u.score : null }); if (r.liveScore === null && isNum(u.score) && u.score !== n.score) r.liveScore = u.score; return r; });
   }
 
   /* ---------- alerts ---------- */

@@ -20,7 +20,7 @@ WEEKS = [
     ("2026-11-09", "9–13 Nov 2026", "Final_Weekly_Model_9-13_Nov_2026.xlsx", "final", {}),
     ("2026-11-16", "16–20 Nov 2026", "Final_Weekly_Model_16-20_Nov_2026.xlsx", "final", {"calc": "f1620.xlsx"}),
     ("2026-11-23", "23–27 Nov 2026", "Final_Weekly_Model_23-27_Nov_2026.xlsx", "final",
-     {"updates": [("2026-11-25T12:00:00Z", "u25.xlsx", "News actuals re-scored 25-Nov ~17:00 PKT (US Core PCE/GDP not out yet). Gate unchanged from 22-Nov.")]}),
+     {"updates": [("2026-11-25T12:00:00Z", "u25.xlsx", "News actuals re-scored 25-Nov ~17:00 PKT (US Core PCE/GDP not out yet). Gate unchanged from 22-Nov.", 20)]}),
 ]
 
 
@@ -332,10 +332,17 @@ def main(out):
         base.update(body)
         base["file"] = fn
         ups = []
-        for ts, cfile, note in extra.get("updates", []):
+        for upd in extra.get("updates", []):
+            ts, cfile, note = upd[:3]
+            nrel = upd[3] if len(upd) > 3 else 0  # first N news rows hold Actual (col F) vs Forecast (col G)
             p = os.path.join(CALC, cfile)
             if os.path.exists(p):
                 b = extract_final(openpyxl.load_workbook(p, data_only=True))
+                for k, e in enumerate(b["news"]):
+                    if k < nrel:
+                        e["actual"], e["forecast"] = e["forecast"], e["previous"]
+                    else:
+                        e["actual"] = None
                 ups.append({"at": ts, "note": note, "currencies": [{k: c[k] for k in ("ccy", "fund", "cot", "seas", "news", "macro", "strength", "rank")} for c in b["currencies"]],
                             "pairs": [{"pair": x["pair"], "bias": x["bias"], "score": x["score"]} for x in b["pairs"]],
                             "news": b["news"]})
