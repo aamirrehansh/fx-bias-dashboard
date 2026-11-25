@@ -23,7 +23,7 @@
 //| Attach to ONE chart (any symbol, any timeframe).                 |
 //+------------------------------------------------------------------+
 #property copyright "FX28 weekly model"
-#property version   "1.05"
+#property version   "1.06"
 #include "DowFibEngine_v14.mqh"
 #property strict
 
@@ -33,6 +33,7 @@ input int    PlanRefreshMin = 60;      // re-download plan every N minutes
 input string SymbolSuffix   = "";      // broker suffix, e.g. ".r" (blank = auto-detect)
 input bool   PushAlerts     = true;    // SendNotification to the MetaTrader mobile app
 input bool   PopupAlerts    = true;    // terminal Alert() popup
+input bool   PushKeyOnly    = true;    // 1.06: phone push + popup only for NEW SETUP and BIAS FLIPPED (all else -> log + app)
 input double ScoreAlertDrop = 15.0;    // alert if |score| weakens by this much vs plan
 input double ConvictionLine = 50.0;    // alert if |score| falls below this (from above)
 input bool   AlertWatchPairs= true;    // include WATCH / RESERVE pairs in alerts
@@ -720,7 +721,7 @@ void ScanAll(const bool force)
          string j=StringFormat("{\"at\":\"%s\",\"level\":\"ok\",\"pair\":\"%s\",\"text\":\"%s\"}",IsoUtc(TimeGMT()),r.pair,JsonEsc(msg));
          int n=ArraySize(gAlerts); ArrayResize(gAlerts,n+1); gAlerts[n]=j;
          if(n+1>30){ for(int a=0;a<n;a++) gAlerts[a]=gAlerts[a+1]; ArrayResize(gAlerts,30); }
-         if(SetupPush) Queue(msg); else Print(msg);
+         if(SetupPush) Queue(msg,true); else Print(msg);
          gDirty=true; gLastPublish=0;
       }
    }
@@ -808,7 +809,7 @@ void AddAlert(const string level,const string pair,const string text)
    string j=StringFormat("{\"at\":\"%s\",\"level\":\"%s\",\"pair\":\"%s\",\"text\":\"%s\"}",IsoUtc(TimeGMT()),level,pair,JsonEsc(text));
    int n=ArraySize(gAlerts); ArrayResize(gAlerts,n+1); gAlerts[n]=j;
    if(n+1>30){ for(int i=0;i<n;i++) gAlerts[i]=gAlerts[i+1]; ArrayResize(gAlerts,30); }
-   Queue(text);
+   Queue(text,StringFind(text,"BIAS FLIPPED")>=0);
    gDirty=true; gLastPublish=0;   // publish now
 }
 
@@ -878,10 +879,11 @@ void CheckPrices()
    }
 }
 
-void Queue(const string msg)
+void Queue(const string msg,const bool key=false)
 {
-   if(PopupAlerts) Alert(msg);
    Print(msg);
+   if(PushKeyOnly && !key) return;          // log + app only
+   if(PopupAlerts) Alert(msg);
    if(!PushAlerts) return;
    string m=msg; if(StringLen(m)>255) m=StringSubstr(m,0,252)+"...";
    int n=ArraySize(gPushQueue); ArrayResize(gPushQueue,n+1); gPushQueue[n]=m;
@@ -899,7 +901,7 @@ void FlushPush()
 //+------------------------------------------------------------------+
 string BuildJson()
 {
-   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.05\",\"pulse\":"+PulseJson()+",\"setups\":"+SetupsJson()+","+(gCheckJson!="" ? "\"dowfibCheck\":"+gCheckJson+"," : "")+"\"currencies\":[";
+   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.06\",\"pulse\":"+PulseJson()+",\"setups\":"+SetupsJson()+","+(gCheckJson!="" ? "\"dowfibCheck\":"+gCheckJson+"," : "")+"\"currencies\":[";
    for(int c=0;c<8;c++)
       j+=StringFormat("%s{\"ccy\":\"%s\",\"fund\":%s,\"news\":%s,\"strength\":%s}",(c?",":""),CCY[c],D2S(cFund[c],4),D2S(cNews[c],4),D2S(cStr[c],3));
    j+="],\"pairs\":[";
@@ -983,7 +985,7 @@ void PublishGitHub(const string json)
 //+------------------------------------------------------------------+
 void Panel()
 {
-   string s="FX Bias Monitor 1.05 | "+gWeekLabel+" | news released: ";
+   string s="FX Bias Monitor 1.06 | "+gWeekLabel+" | news released: ";
    int rel=0, mat=0; for(int i=0;i<ArraySize(gNews);i++){ if(gNews[i].released) rel++; if(gNews[i].matched) mat++; }
    s+=IntegerToString(rel)+"/"+IntegerToString(ArraySize(gNews))+" (matched "+IntegerToString(mat)+")\n";
    s+="Strength: ";
