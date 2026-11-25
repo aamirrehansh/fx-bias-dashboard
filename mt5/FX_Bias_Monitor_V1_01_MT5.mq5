@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| FX_Bias_Monitor_V1_00_MT5.mq5                                    |
+//| FX_Bias_Monitor_V1_01_MT5.mq5                                    |
 //| Live monitor for the weekly Sarmaaya bias model. Does NOT trade. |
 //|  - downloads this week's plan (data/plan.csv) from GitHub        |
 //|  - reads news actuals from the MT5 economic calendar             |
@@ -15,7 +15,7 @@
 //| Attach to ONE chart (any symbol, any timeframe).                 |
 //+------------------------------------------------------------------+
 #property copyright "FX28 weekly model"
-#property version   "1.00"
+#property version   "1.01"
 #property strict
 
 input string PlanURL        = "https://raw.githubusercontent.com/aamirrehansh/fx-bias-dashboard/main/data/plan.csv";
@@ -36,7 +36,7 @@ input int    PublishMinutes = 10;      // upload live.json at most every N minut
 string   CCY[8] = {"USD","EUR","GBP","JPY","CHF","CAD","AUD","NZD"};
 double   cFund[8], cCot[8], cSeas[8], cNewsPlan[8], cMacro[8], cStrPlan[8];
 double   cNews[8], cStr[8];
-double   wFund=0.4, wCot=0.2, wSeas=0.1, wNews=0.15, wMacro=0.15;
+double   wFund=0.4, wCot=0.2, wSeas=0.1, wNews=0.15, wMacro=0.15, newsMinW=2.0;
 string   gWeekId="", gWeekEnd="", gWeekLabel="";
 string   gPlanText="";
 
@@ -45,7 +45,7 @@ struct NewsRow
    datetime tUtc;        // release time (UTC)
    string   date, time, ccy, impact, name;
    double   pol, w, fc, pv, planScore;
-   bool     matched, released;
+   bool     matched, released, diagDone;
    ulong    valueId;
    double   actual, score;
 };
@@ -53,11 +53,11 @@ NewsRow  gNews[];
 
 struct PairRow
 {
-   string pair, bias, tier, sym;
+   string pair, bias, tier, sym, d1Trend, h1Trend;
    double planScore, risk, d1Fail, h1Fail;
    double score;
    string lastState;     // for de-duplicating alerts
-   bool   invalidSent, slSent;
+   bool   invalidSent, slSent, turnSent, entrySent;
 };
 PairRow  gPairs[];
 
@@ -152,7 +152,7 @@ bool ParsePlan(const string txt)
       string f[]; int k=StringSplit(ln,',',f);
       if(k<2) continue;
       if(f[0]=="WEEK" && k>=4){ gWeekId=f[1]; gWeekEnd=f[2]; gWeekLabel=f[3]; }
-      else if(f[0]=="W" && k>=6){ wFund=Num(f[1]); wCot=Num(f[2]); wSeas=Num(f[3]); wNews=Num(f[4]); wMacro=Num(f[5]); }
+      else if(f[0]=="W" && k>=6){ wFund=Num(f[1]); wCot=Num(f[2]); wSeas=Num(f[3]); wNews=Num(f[4]); wMacro=Num(f[5]); if(k>=7 && Num(f[6])!=EMPTY_VALUE) newsMinW=Num(f[6]); }
       else if(f[0]=="C" && k>=8)
       {
          int c=CcyIdx(f[1]); if(c<0) continue;
@@ -167,14 +167,15 @@ bool ParsePlan(const string txt)
          if(r.pol==EMPTY_VALUE) r.pol=1; if(r.w==EMPTY_VALUE) r.w=0.5; if(r.planScore==EMPTY_VALUE) r.planScore=0;
          string dd=r.date; StringReplace(dd,"-",".");
          r.tUtc=StringToTime(dd+" "+(r.time=="" ? "00:00" : r.time))-5*3600;   // PKT = UTC+5
-         r.matched=false; r.released=false; r.valueId=0; r.actual=EMPTY_VALUE; r.score=r.planScore;
+         r.matched=false; r.released=false; r.diagDone=false; r.valueId=0; r.actual=EMPTY_VALUE; r.score=r.planScore;
          int m=ArraySize(gNews); ArrayResize(gNews,m+1); gNews[m]=r;
       }
       else if(f[0]=="P" && k>=8)
       {
          PairRow p;
          p.pair=f[1]; p.bias=f[2]; p.tier=f[3]; p.planScore=Num(f[4]); p.risk=Num(f[5]); p.d1Fail=Num(f[6]); p.h1Fail=Num(f[7]);
-         p.score=p.planScore; p.lastState=""; p.invalidSent=false; p.slSent=false;
+         p.d1Trend=(k>=9 ? f[8] : ""); p.h1Trend=(k>=10 ? f[9] : "");
+         p.score=p.planScore; p.lastState=""; p.invalidSent=false; p.slSent=false; p.turnSent=false; p.entrySent=false;
          p.sym=ResolveSymbol(p.pair);
          int m=ArraySize(gPairs); ArrayResize(gPairs,m+1); gPairs[m]=p;
       }
@@ -259,7 +260,14 @@ void MatchNews()
          s-=0.05*dt;
          if(s>best){ best=s; bestId=vals[v].id; }
       }
-      if(best>=0.55){ gNews[i].matched=true; gNews[i].valueId=bestId; }
+      if(best>=0.55)
+      {
+         gNews[i].matched=true; gNews[i].valueId=bestId;
+         MqlCalendarValue mv; MqlCalendarEvent me;
+         if(CalendarValueById(bestId,mv) && CalendarEventById(mv.event_id,me))
+            PrintFormat("Matched: %s (%s) -> MT5 '%s' %s, actual %s",gNews[i].name,gNews[i].ccy,me.name,TimeToString(mv.time),(mv.actual_value==LONG_MIN?"none yet":DoubleToString(mv.actual_value/1e6,2)));
+      }
+      else if(gNews[i].tUtc<TimeGMT()-1800 && !gNews[i].diagDone){ PrintFormat("Not matched in MT5 calendar: %s (%s) %s %s PKT",gNews[i].name,gNews[i].ccy,gNews[i].date,gNews[i].time); gNews[i].diagDone=true; }
    }
 }
 
@@ -269,12 +277,24 @@ void UpdateNews()
    {
       if(!gNews[i].matched || gNews[i].released) continue;
       MqlCalendarValue v;
-      if(!CalendarValueById(gNews[i].valueId,v)) continue;
-      if(!v.HasActualValue()) continue;
-      double act=v.GetActualValue();
+      if(!CalendarValueById(gNews[i].valueId,v)){ if(!gNews[i].diagDone){ PrintFormat("News %s: CalendarValueById failed (%d)",gNews[i].name,GetLastError()); gNews[i].diagDone=true; } continue; }
+      bool has=(v.actual_value!=LONG_MIN);
+      if(!has)
+      {
+         // past release time + 30 min and still no actual: log once so we can see what MT5 holds
+         if(!gNews[i].diagDone && TimeGMT()>gNews[i].tUtc+1800)
+         {
+            MqlCalendarEvent ev; CalendarEventById(v.event_id,ev);
+            PrintFormat("News %s (%s): matched MT5 '%s' at %s server, no actual yet (forecast %s, prev %s)",gNews[i].name,gNews[i].ccy,ev.name,TimeToString(v.time),
+                        (v.forecast_value==LONG_MIN?"-":DoubleToString(v.forecast_value/1e6,2)),(v.prev_value==LONG_MIN?"-":DoubleToString(v.prev_value/1e6,2)));
+            gNews[i].diagDone=true;
+         }
+         continue;
+      }
+      double act=v.actual_value/1e6;
       double s=0;
-      if(v.HasForecastValue())
-         s=Sgn(act-v.GetForecastValue())*gNews[i].pol*gNews[i].w;
+      if(v.forecast_value!=LONG_MIN)
+         s=Sgn(act-v.forecast_value/1e6)*gNews[i].pol*gNews[i].w;
       else if(gNews[i].fc!=EMPTY_VALUE && MathAbs(act-gNews[i].fc)<10*MathMax(1.0,MathAbs(gNews[i].fc)))
          s=Sgn(act-gNews[i].fc)*gNews[i].pol*gNews[i].w;
       else if(v.impact_type==CALENDAR_IMPACT_POSITIVE) s= gNews[i].w;
@@ -309,7 +329,7 @@ void Recompute()
    }
    for(int c=0;c<8;c++)
    {
-      cNews[c]=(wt[c]>0 ? sum[c]/wt[c] : cNewsPlan[c]);
+      cNews[c]=sum[c]/MathMax(wt[c],newsMinW);   // = News sheet: SUM / MAX(weight, Settings!B41)
       cStr[c]=100.0*(wFund*cFund[c]+wCot*cCot[c]+wSeas*cSeas[c]+wNews*cNews[c]+wMacro*cMacro[c]);
    }
    for(int p=0;p<ArraySize(gPairs);p++)
@@ -357,26 +377,41 @@ void CheckPrices()
    {
       if(!IsShort(gPairs[i].tier) || gPairs[i].sym=="") continue;
       int dir=(gPairs[i].bias=="BUY" ? 1 : -1);
+      string want=(dir>0 ? "UP" : "DOWN");
       string sym=gPairs[i].sym;
       int dg=(int)SymbolInfoInteger(sym,SYMBOL_DIGITS);
-      // D1 invalidation: completed D1 close beyond the D1 trend-fails level
-      if(!gPairs[i].invalidSent && gPairs[i].d1Fail!=EMPTY_VALUE && gPairs[i].d1Fail>0)
+      double c1=iClose(sym,PERIOD_D1,1);
+      double h1c=iClose(sym,PERIOD_H1,1);
+      double bid=SymbolInfoDouble(sym,SYMBOL_BID);
+      bool d1With=(gPairs[i].d1Trend==want), h1With=(gPairs[i].h1Trend==want);
+      // D1 trend-fails level
+      if(gPairs[i].d1Fail!=EMPTY_VALUE && gPairs[i].d1Fail>0 && c1>0)
       {
-         double c1=iClose(sym,PERIOD_D1,1);
-         if(c1>0 && ((dir>0 && c1<gPairs[i].d1Fail) || (dir<0 && c1>gPairs[i].d1Fail)))
-         {
+         bool beyondAgainst=((dir>0 && c1<gPairs[i].d1Fail) || (dir<0 && c1>gPairs[i].d1Fail));
+         bool beyondFor=((dir>0 && c1>gPairs[i].d1Fail) || (dir<0 && c1<gPairs[i].d1Fail));
+         if(d1With && beyondAgainst && !gPairs[i].invalidSent)
+         {  // D1 trend in our favour has failed -> idea invalid
             gPairs[i].invalidSent=true;
-            AddAlert("dn",gPairs[i].pair,StringFormat("%s %s %s: D1 closed %s beyond the trend-fails level %s. Idea invalid, exit.",gPairs[i].tier,gPairs[i].pair,gPairs[i].bias,DoubleToString(c1,dg),DoubleToString(gPairs[i].d1Fail,dg)));
+            AddAlert("dn",gPairs[i].pair,StringFormat("%s %s %s: D1 closed %s beyond the D1 trend-fails level %s. Idea invalid, exit.",gPairs[i].tier,gPairs[i].pair,gPairs[i].bias,DoubleToString(c1,dg),DoubleToString(gPairs[i].d1Fail,dg)));
+         }
+         if(!d1With && gPairs[i].d1Trend!="" && beyondFor && !gPairs[i].turnSent)
+         {  // opposing D1 trend has failed -> D1 turning our way (gate may now pass)
+            gPairs[i].turnSent=true;
+            AddAlert("ok",gPairs[i].pair,StringFormat("%s %s %s: D1 closed %s beyond the opposing D1 trend-fails level %s. D1 turning our way, re-check the gate.",gPairs[i].tier,gPairs[i].pair,gPairs[i].bias,DoubleToString(c1,dg),DoubleToString(gPairs[i].d1Fail,dg)));
          }
       }
-      // H1 trend-fails (SL zone) touched
-      if(!gPairs[i].slSent && gPairs[i].h1Fail!=EMPTY_VALUE && gPairs[i].h1Fail>0 && gPairs[i].tier=="TRADE")
+      // H1 trend-fails level
+      if(gPairs[i].h1Fail!=EMPTY_VALUE && gPairs[i].h1Fail>0)
       {
-         double bid=SymbolInfoDouble(sym,SYMBOL_BID);
-         if(bid>0 && ((dir>0 && bid<gPairs[i].h1Fail) || (dir<0 && bid>gPairs[i].h1Fail)))
-         {
+         if(h1With && gPairs[i].tier=="TRADE" && !gPairs[i].slSent && bid>0 && ((dir>0 && bid<gPairs[i].h1Fail) || (dir<0 && bid>gPairs[i].h1Fail)))
+         {  // H1 with us: level = SL zone
             gPairs[i].slSent=true;
             AddAlert("warn",gPairs[i].pair,StringFormat("%s %s: price %s crossed the H1 trend-fails / SL level %s.",gPairs[i].pair,gPairs[i].bias,DoubleToString(bid,dg),DoubleToString(gPairs[i].h1Fail,dg)));
+         }
+         if(!h1With && gPairs[i].h1Trend!="" && !gPairs[i].entrySent && h1c>0 && ((dir>0 && h1c>gPairs[i].h1Fail) || (dir<0 && h1c<gPairs[i].h1Fail)))
+         {  // H1 against us: level = entry trigger (H1 close beyond it)
+            gPairs[i].entrySent=true;
+            AddAlert("ok",gPairs[i].pair,StringFormat("%s %s %s: H1 closed %s beyond %s, the entry trigger. Check the setup.",gPairs[i].tier,gPairs[i].pair,gPairs[i].bias,DoubleToString(h1c,dg),DoubleToString(gPairs[i].h1Fail,dg)));
          }
       }
    }
@@ -403,7 +438,7 @@ void FlushPush()
 //+------------------------------------------------------------------+
 string BuildJson()
 {
-   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.00\",\"currencies\":[";
+   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.01\",\"currencies\":[";
    for(int c=0;c<8;c++)
       j+=StringFormat("%s{\"ccy\":\"%s\",\"news\":%s,\"strength\":%s}",(c?",":""),CCY[c],D2S(cNews[c],4),D2S(cStr[c],3));
    j+="],\"pairs\":[";
@@ -487,7 +522,7 @@ void PublishGitHub(const string json)
 //+------------------------------------------------------------------+
 void Panel()
 {
-   string s="FX Bias Monitor 1.00 | "+gWeekLabel+" | news released: ";
+   string s="FX Bias Monitor 1.01 | "+gWeekLabel+" | news released: ";
    int rel=0, mat=0; for(int i=0;i<ArraySize(gNews);i++){ if(gNews[i].released) rel++; if(gNews[i].matched) mat++; }
    s+=IntegerToString(rel)+"/"+IntegerToString(ArraySize(gNews))+" (matched "+IntegerToString(mat)+")\n";
    s+="Strength: ";

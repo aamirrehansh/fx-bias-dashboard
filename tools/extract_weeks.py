@@ -103,6 +103,10 @@ def extract_final(wb):
     for r in rows(wb["Currency Model"]):
         if r and r[0] == "Weight":
             w = {"fund": r[1], "cot": r[2], "seas": r[3], "news": r[4], "macro": r[5]}
+    if "Settings" in wb.sheetnames:
+        mw = wb["Settings"]["B41"].value
+        if isinstance(mw, (int, float)):
+            w["newsMinW"] = mw  # News score = sum / MAX(total weight, this)
     # fundamental
     fs = wb["Fundamental"]
     _, fr = table(fs)
@@ -297,7 +301,7 @@ def write_plan(weeks, path):
     n = lambda v: "" if v is None else ("%.6g" % v)
     L = ["WEEK,%s,%s,%s" % (w["id"], w["end"], clean(w["label"]))]
     wt = w["weights"]
-    L.append("W,%s,%s,%s,%s,%s" % tuple(n(wt[k]) for k in ("fund", "cot", "seas", "news", "macro")))
+    L.append("W,%s,%s,%s,%s,%s,%s" % (tuple(n(wt[k]) for k in ("fund", "cot", "seas", "news", "macro")) + (n(wt.get("newsMinW", 2)),)))
     for c in w["currencies"]:
         L.append("C,%s,%s,%s,%s,%s,%s,%s" % (c["ccy"], n(c["fund"]), n(c["cot"]), n(c["seas"]), n(c["news"]), n(c["macro"]), n(c["strength"])))
     for e in w.get("news", []):
@@ -307,7 +311,8 @@ def write_plan(weeks, path):
                                                     n(e["forecast"]), n(e["previous"]), n(e["score"]), clean(e["event"])))
     for p in w["pairs"]:
         t = p.get("tech") or {}
-        L.append("P,%s,%s,%s,%s,%s,%s,%s" % (p["pair"], p["bias"], p["tier"], n(p["score"]), n(p.get("risk") or 0), n(t.get("d1Fail")), n(t.get("h1Fail"))))
+        L.append("P,%s,%s,%s,%s,%s,%s,%s,%s,%s" % (p["pair"], p["bias"], p["tier"], n(p["score"]), n(p.get("risk") or 0), n(t.get("d1Fail")), n(t.get("h1Fail")),
+                                                 clean(t.get("d1") or ""), clean(t.get("h1") or "")))
     with open(path, "w", newline="\n") as f:
         f.write("\n".join(L) + "\n")
     print("wrote", path, w["id"])
