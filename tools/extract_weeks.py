@@ -446,6 +446,24 @@ def conf_mult(L, O, P, S):
     return min(1.0, U + V)
 
 
+def blend_fund(week):
+    """Aamir 26-Nov: Fund = 50% Investogenie strength (sign x tier .25/.5/.75/1 by |chg|, 0 under deadband)
+    + 25% Latest strength (net / total) + 25% Conditional strength (net / total). Range -1..+1."""
+    S = week["weights"].get("fundSet") or FUND_DEFAULT
+    out = {}
+    for c in week["currencies"]:
+        L = c.get("investChg") or 0
+        a = abs(L)
+        tier = 0 if a < S["db"] else S["s1"] if a < S["t1"] else S["s2"] if a < S["t2"] else S["s3"] if a < S["t3"] else S["s4"]
+        lp, lm = c.get("latestPlus") or 0, c.get("latestMinus") or 0
+        cp, cm = c.get("condPlus") or 0, c.get("condMinus") or 0
+        ls = (lp - lm) / (lp + lm) if lp + lm else 0
+        cs = (cp - cm) / (cp + cm) if cp + cm else 0
+        c["fundParts"] = {"invest": round(sgn(L) * tier, 4), "latest": round(ls, 4), "cond": round(cs, 4)}
+        out[c["ccy"]] = round(0.5 * sgn(L) * tier + 0.25 * ls + 0.25 * cs, 6) + 0.0
+    return out
+
+
 def rank_fund(week):
     """Fund input = raw Investogenie change ranked across the 8 currencies, -1 (lowest) .. +1 (highest), ties averaged,
     then x confirmation multiplier (Aamir 26-Nov: full 100 only with both Latest and Conditional confirming)."""
@@ -481,8 +499,9 @@ def apply_new_weights(week, weights=None):
     wt.setdefault("old", {k: week["weights"][k] for k in ("fund", "cot", "seas", "news", "macro")})
     wt.update(weights or NEW_WEIGHTS)
     wt["fundMode"] = "rank"
+    wt["fundCalc"] = "blend"
     week["weights"] = wt
-    rf = rank_fund(week)
+    rf = blend_fund(week)
     for c in week["currencies"]:
         c.setdefault("fundScored", c["fund"])
         c.setdefault("strengthOld", c["strength"])
