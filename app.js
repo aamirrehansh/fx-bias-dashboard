@@ -58,9 +58,18 @@
       (last.pairs || []).forEach((p) => { if (pmap[p.pair]) { pmap[p.pair].score = p.score; pmap[p.pair].bias = p.bias || (p.score >= 0 ? "BUY" : "SELL"); } });
       if (last.news && last.news.length) news = mergeNews(news, last.news);
     }
-    if (w.weights && w.weights.fundMode === "rank")  // bias label follows the rank-based Fund score (26-Nov review), not the old tiers
-      Object.values(cmap).forEach((c) => { const v = c.fund; if (isNum(v)) { c.fundBiasOld = c.fundBias; c.fundBias = v >= 0.7 ? "BUY" : v >= 0.4 ? "WEAK BUY" : v <= -0.7 ? "SELL" : v <= -0.4 ? "WEAK SELL" : "NEUTRAL"; } });
+    if (w.weights && w.weights.fundMode === "rank")  // Aamir 26-Nov: bias label from Investogenie direction + Latest/Cond confirmation
+      Object.values(cmap).forEach((c) => { c.fundBiasOld = c.fundBias; c.fundBias = fundBiasLabel(c); });
     return { at: last ? last.at : null, note: last ? last.note : null, live: !!(last && last.live), prices: last && last.prices, ccy: cmap, pairs: pmap, news, snaps };
+  }
+  // Investogenie change sets direction (|chg| < 2 = NEUTRAL); 2-10 = weak move -> WEAK; otherwise both confirm = STRONG, one = plain, none = WEAK
+  function fundBiasLabel(c) {
+    const L = c.investChg;
+    if (!isNum(L) || Math.abs(L) < 2) return "NEUTRAL";
+    const side = L > 0 ? "BUY" : "SELL";
+    if (Math.abs(L) < 10) return "WEAK " + side;
+    const n = (String(c.latestState).toUpperCase() === "CONFIRM") + (String(c.condState).toUpperCase() === "CONFIRM");
+    return n === 2 ? "STRONG " + side : n === 1 ? side : "WEAK " + side;
   }
   function pick(o, ks) { const r = {}; ks.forEach((k) => { if (o[k] !== undefined && o[k] !== null) r[k] = o[k]; }); return r; }
   function mergeNews(base, upd) {
