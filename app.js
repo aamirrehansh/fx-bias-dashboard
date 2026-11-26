@@ -58,6 +58,8 @@
       (last.pairs || []).forEach((p) => { if (pmap[p.pair]) { pmap[p.pair].score = p.score; pmap[p.pair].bias = p.bias || (p.score >= 0 ? "BUY" : "SELL"); } });
       if (last.news && last.news.length) news = mergeNews(news, last.news);
     }
+    if (w.weights && w.weights.fundMode === "rank")  // bias label follows the rank-based Fund score (26-Nov review), not the old tiers
+      Object.values(cmap).forEach((c) => { const v = c.fund; if (isNum(v)) { c.fundBiasOld = c.fundBias; c.fundBias = v >= 0.7 ? "BUY" : v >= 0.4 ? "WEAK BUY" : v <= -0.7 ? "SELL" : v <= -0.4 ? "WEAK SELL" : "NEUTRAL"; } });
     return { at: last ? last.at : null, note: last ? last.note : null, live: !!(last && last.live), prices: last && last.prices, ccy: cmap, pairs: pmap, news, snaps };
   }
   function pick(o, ks) { const r = {}; ks.forEach((k) => { if (o[k] !== undefined && o[k] !== null) r[k] = o[k]; }); return r; }
