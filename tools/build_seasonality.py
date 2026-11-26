@@ -92,6 +92,9 @@ lk = CR.index[-1]
 stretch = pd.DataFrame({"move %": CR.loc[lk].round(3), "typical %": std26.loc[lk].round(3), "x typical": X.loc[lk].round(2)})
 stretch["flag"] = np.where(X.loc[lk].abs() > 2, "STRETCHED", np.where(X.loc[lk].abs() > 1.5, "watch", ""))
 stretch["fade side next week"] = np.where(stretch["flag"] != "", np.where(X.loc[lk] > 0, "SELL", "BUY"), "")
+# Model score (Aamir 26-Nov, replaces Sarmaaya seasonality in the 5% Seasonality slot from the 30-Nov plan):
+# fade side, >2x = 100, 1.5-2x = 50, else 0
+stretch["score"] = (-np.sign(X.loc[lk]) * np.where(X.loc[lk].abs() > 2, 100, np.where(X.loc[lk].abs() > 1.5, 50, 0))).astype(int)
 stretch.index.name = "Currency"
 hist = X.tail(12).round(2)
 # expected range: weekly high-low per symbol in pips
