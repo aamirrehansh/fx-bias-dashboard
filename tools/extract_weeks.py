@@ -29,7 +29,8 @@ WEEKS = [
       "tracked": "data/pulse/tracked_2026-11-22.csv",
       "pulse": [("2026-11-25T15:10:00Z", "data/pulse/ff_2026-11-23.csv", "Investogenie Pulse: Conditional +/- updated from Forex Factory releases Mon-Wed (actual vs previous, tracked events); news actuals as of 18:30 PKT.",
                  "data/2026-11-25/actuals_ff.csv")],
-      "macro": ("data/pulse/babypips_2026-11-23.csv", "data/pulse/babypips_notes_2026-11-23.csv")}),
+      "macro": ("data/pulse/babypips_2026-11-23.csv", "data/pulse/babypips_notes_2026-11-23.csv"),
+      "reweight": True}),  # 26-Nov: Aamir applied reviewed weights 40/15/5/10/30 + raw Investogenie rank mid-week
 ]
 
 
@@ -427,6 +428,64 @@ def compute_pulse(week, ff_csv, tracked, asof=None):
     return {"rows": rows, "events": evs}
 
 
+NEW_WEIGHTS = {"fund": 0.40, "cot": 0.15, "seas": 0.05, "news": 0.10, "macro": 0.30}  # Aamir 26-Nov-2026 (factor weight review)
+
+
+def rank_fund(week):
+    """Fund input = raw Investogenie change ranked across the 8 currencies, -1 (lowest) .. +1 (highest), ties averaged."""
+    vals = {c["ccy"]: (c.get("investChg") or 0.0) for c in week["currencies"]}
+    order = sorted(vals.values())
+    n = len(order)
+    out = {}
+    for k, v in vals.items():
+        idx = [i for i, x in enumerate(order) if x == v]
+        r = sum(idx) / len(idx)
+        out[k] = round((r - (n - 1) / 2) / ((n - 1) / 2), 6)
+    return out
+
+
+def _strength(wt, c):
+    return round(100 * (wt["fund"] * c["fund"] + wt["cot"] * c["cot"] + wt["seas"] * c["seas"] + wt["news"] * c["news"] + wt["macro"] * c["macro"]), 6)
+
+
+def _pairs(week, smap):
+    return [{"pair": p["pair"], "score": round(smap[p["pair"][:3]] - smap[p["pair"][3:]], 6),
+             "bias": "BUY" if smap[p["pair"][:3]] - smap[p["pair"][3:]] >= 0 else "SELL"} for p in week["pairs"]]
+
+
+def apply_new_weights(week, weights=None):
+    """Switch a week to the reviewed weights + raw-Investogenie-rank Fund. Re-scores the Sunday plan
+    (keeps oldWeights / fundScored / planStrengthOld for reference) and every intra-week snapshot."""
+    wt = dict(week["weights"])
+    wt["old"] = {k: week["weights"][k] for k in ("fund", "cot", "seas", "news", "macro")}
+    wt.update(weights or NEW_WEIGHTS)
+    wt["fundMode"] = "rank"
+    week["weights"] = wt
+    rf = rank_fund(week)
+    for c in week["currencies"]:
+        c.setdefault("fundScored", c["fund"])
+        c.setdefault("strengthOld", c["strength"])
+        c["fund"] = rf[c["ccy"]]
+        c["strength"] = _strength(wt, c)
+    for i, c in enumerate(sorted(week["currencies"], key=lambda x: -x["strength"])):
+        c["rank"] = i + 1
+    smap = {c["ccy"]: c["strength"] for c in week["currencies"]}
+    for p in week["pairs"]:
+        p.setdefault("scoreOld", p["score"])
+        p["score"] = round(smap[p["pair"][:3]] - smap[p["pair"][3:]], 6)
+    for u in week.get("updates", []):
+        for c in u["currencies"]:
+            c["fund"] = rf[c["ccy"]]
+            c["strength"] = _strength(wt, c)
+        for i, c in enumerate(sorted(u["currencies"], key=lambda x: -x["strength"])):
+            c["rank"] = i + 1
+        u["pairs"] = _pairs(week, {c["ccy"]: c["strength"] for c in u["currencies"]})
+    if week.get("pulse"):
+        for r in week["pulse"]["rows"]:
+            r["fundPlan"] = r["fund"] = rf[r["ccy"]]
+    return week
+
+
 MACRO_STEP = 0.5     # each daily +1/-1 moves the -2..+2 Macro score by this much
 MACRO_NOISE = 0.15   # % move vs the 8-currency average needed to count
 
@@ -522,7 +581,7 @@ def write_plan(weeks, path):
     fs = wt.get("fundSet") or FUND_DEFAULT
     L.append("FS," + ",".join(n(fs[k]) for k in FUND_KEYS))
     for c in w["currencies"]:
-        L.append("F,%s,%s,%s,%s,%s,%s" % (c["ccy"], n(c.get("investChg") or 0), n(c.get("latestNet") or 0), n(c.get("condPlus") or 0), n(c.get("condMinus") or 0), w["id"][:7]))
+        L.append(("FR" if wt.get("fundMode") == "rank" else "F") + ",%s,%s,%s,%s,%s,%s" % (c["ccy"], n(c.get("investChg") or 0), n(c.get("latestNet") or 0), n(c.get("condPlus") or 0), n(c.get("condMinus") or 0), w["id"][:7]))
     if w.get("trackedFile"):
         for (ccy, _), (pol, name) in sorted(tracked_events(os.path.join(ROOT, w["trackedFile"])).items()):
             L.append("T,%s,%d,%s" % (ccy, pol, clean(name)))
@@ -579,6 +638,10 @@ def main(out):
             upd = rescore_from_actuals(base, os.path.join(PF, actp), ts, note, {r["ccy"]: r["fund"] for r in pu["rows"]})
             upd["pulse"] = True
             ups.append(upd)
+        base["updates"] = ups
+        if extra.get("reweight"):
+            apply_new_weights(base, extra["reweight"] if isinstance(extra["reweight"], dict) else None)
+            ups = base["updates"]
         if extra.get("macro"):
             mp = compute_macro_pulse(base, os.path.join(ROOT, extra["macro"][0]), extra["macro"][1])
             base["macroPulse"] = mp

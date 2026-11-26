@@ -12,6 +12,8 @@
 //|    DowFibEngine_v14.mqh = Aamir's TradingView indicator v14) and  |
 //|    push NEW SETUP alerts. Needs DowFibEngine_v14.mqh next to it. |
 //|  - V1.07: shortlist always gated live; push only if |score|>=50|
+//|  - V1.08: plan "FR" rows = Fund is raw Investogenie rank; Pulse  |
+//|    still counts Conditional but no longer rewrites Fund         |
 //|  - push alerts (MetaTrader app) when a shortlisted pair's bias   |
 //|    flips / score weakens, or price breaks the invalidation level |
 //|  - writes live.json (MQL5\Files common) and optionally commits   |
@@ -24,7 +26,7 @@
 //| Attach to ONE chart (any symbol, any timeframe).                 |
 //+------------------------------------------------------------------+
 #property copyright "FX28 weekly model"
-#property version   "1.07"
+#property version   "1.08"
 #include "DowFibEngine_v14.mqh"
 #property strict
 
@@ -71,6 +73,7 @@ string   gPlanText="";
 //--- V1.04 Pulse / Fundamental
 double   gFS[19];                  // Settings B11..B14, B15..B18, B21..B26, B27..B31
 bool     gHasF=false;
+bool     gFundRaw=false;   // 1.08: Fund from plan C rows (raw Investogenie rank), Pulse is display only
 double   fInv[8], fLat[8], fCP[8], fCM[8];   // Investogenie change, Latest net, Sunday Cond+/-
 double   cFundPlan[8];
 string   gBaseMonth="";
@@ -206,7 +209,7 @@ bool ParsePlan(const string txt)
    string lines[]; int n=StringSplit(txt,'\n',lines);
    if(n<5) return false;
    ArrayResize(gNews,0); ArrayResize(gPairs,0);
-   ArrayResize(tCcy,0); ArrayResize(tName,0); ArrayResize(tPol,0); gHasF=false;
+   ArrayResize(tCcy,0); ArrayResize(tName,0); ArrayResize(tPol,0); gHasF=false; gFundRaw=false;
    double defFS[19]={2,10,25,50,0.25,0.5,0.75,1,1,0.75,0.5,0.5,0.25,0,3,0.25,0.25,0.125,0.375};
    ArrayCopy(gFS,defFS);
    for(int i=0;i<n;i++)
@@ -223,10 +226,11 @@ bool ParsePlan(const string txt)
          cFund[c]=Num(f[2]); cCot[c]=Num(f[3]); cSeas[c]=Num(f[4]); cNewsPlan[c]=Num(f[5]); cMacro[c]=Num(f[6]); cStrPlan[c]=Num(f[7]);
       }
       else if(f[0]=="FS" && k>=20){ for(int j=0;j<19;j++){ double v=Num(f[j+1]); if(v!=EMPTY_VALUE) gFS[j]=v; } }
-      else if(f[0]=="F" && k>=7)
+      else if((f[0]=="F" || f[0]=="FR") && k>=7)
       {
          int c=CcyIdx(f[1]); if(c<0) continue;
          fInv[c]=Num(f[2]); fLat[c]=Num(f[3]); fCP[c]=Num(f[4]); fCM[c]=Num(f[5]); gBaseMonth=f[6]; gHasF=true;
+         if(f[0]=="FR") gFundRaw=true;
       }
       else if(f[0]=="T" && k>=4)
       {
@@ -259,7 +263,7 @@ bool ParsePlan(const string txt)
    }
    for(int c=0;c<8;c++){ cFundPlan[c]=cFund[c]; pState[c]=""; pStatePrev[c]=""; pPlus[c]=(int)fCP[c]; pMinus[c]=(int)fCM[c]; }
    gLastPulse=0; ArrayResize(gPulseEv,0);
-   if(gHasF)
+   if(gHasF && !gFundRaw)
       for(int c=0;c<8;c++)
       {
          string st; double y=FundScore(fInv[c],fLat[c],fCP[c]-fCM[c],st);
@@ -596,6 +600,7 @@ void UpdatePulse()
       string st; double before=cFund[c];
       double y=FundScore(fInv[c],fLat[c],pPlus[c]-pMinus[c],st);
       if(pStatePrev[c]==""){ string s0; FundScore(fInv[c],fLat[c],fCP[c]-fCM[c],s0); pStatePrev[c]=s0; }
+      if(gFundRaw) y=before;                   // 1.08: raw-rank Fund is fixed for the week; Conditional is shown only
       cFund[c]=y;
       if(MathAbs(y-before)>1e-9) changed=true;
       if(pState[c]!="" && (st!=pState[c] || MathAbs(y-before)>1e-9))
@@ -913,7 +918,7 @@ void FlushPush()
 //+------------------------------------------------------------------+
 string BuildJson()
 {
-   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.07\",\"pulse\":"+PulseJson()+",\"setups\":"+SetupsJson()+","+(gCheckJson!="" ? "\"dowfibCheck\":"+gCheckJson+"," : "")+"\"currencies\":[";
+   string j="{\"week\":\""+gWeekId+"\",\"at\":\""+IsoUtc(TimeGMT())+"\",\"source\":\"MT5 FX Bias Monitor 1.08\",\"pulse\":"+PulseJson()+",\"setups\":"+SetupsJson()+","+(gCheckJson!="" ? "\"dowfibCheck\":"+gCheckJson+"," : "")+"\"currencies\":[";
    for(int c=0;c<8;c++)
       j+=StringFormat("%s{\"ccy\":\"%s\",\"fund\":%s,\"news\":%s,\"strength\":%s}",(c?",":""),CCY[c],D2S(cFund[c],4),D2S(cNews[c],4),D2S(cStr[c],3));
    j+="],\"pairs\":[";
@@ -997,7 +1002,7 @@ void PublishGitHub(const string json)
 //+------------------------------------------------------------------+
 void Panel()
 {
-   string s="FX Bias Monitor 1.07 | "+gWeekLabel+" | news released: ";
+   string s="FX Bias Monitor 1.08 | "+gWeekLabel+" | news released: ";
    int rel=0, mat=0; for(int i=0;i<ArraySize(gNews);i++){ if(gNews[i].released) rel++; if(gNews[i].matched) mat++; }
    s+=IntegerToString(rel)+"/"+IntegerToString(ArraySize(gNews))+" (matched "+IntegerToString(mat)+")\n";
    s+="Strength: ";
