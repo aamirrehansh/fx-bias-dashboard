@@ -353,7 +353,7 @@
       <tbody>${rows.map(([c, r]) => `<tr><td class="ccy">${c.ccy}</td><td class="c">${pill(r.sunday, 50)}</td>${r.days.map((v) => `<td class="c">${dcell(v)}</td>`).join("")}<td class="c b">${r.adjRaw !== r.sunday ? `${pill(r.adjRaw, 50)}` : pill(r.adjRaw, 50)}</td><td class="c">${isNum(r.macroPlan) && Math.abs(r.macro - r.macroPlan) > 1e-9 ? `${pill(r.macroPlan)} → ${pill(r.macro)}` : pill(r.macro)}</td><td class="wrap" style="white-space:normal">${esc(c.macroWhy || "")}</td></tr>`).join("")}</tbody></table></div>`;
     const ent = (M.entries || []).slice().sort((a, b) => String(b.utc).localeCompare(String(a.utc)));
     const et = ent.length ? `<div class="tw"><table><thead><tr><th>Posted (PKT)</th><th>Source</th><th>Counted</th><th>Drivers</th></tr></thead><tbody>${ent.map((e) => `<tr><td class="mut">${new Date(e.utc).toLocaleString("en-GB", { timeZone: "Asia/Karachi", weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td><td><a href="${esc(e.url)}" target="_blank" rel="noopener">${e.kind === "recap" ? "Daily recap" : "News"}</a></td><td>${Object.entries(e.score || {}).map(([k, v]) => `<span class="tag ${v > 0 ? "up" : "dn"}">${k} ${v > 0 ? "+" : "−"}${Math.abs(v)}</span>`).join(" ") || '<span class="mut">none</span>'}</td><td class="wrap" style="white-space:normal">${esc(e.drivers || "")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No BabyPips updates yet this week.</p>`;
-    return card("Macro overlay + BabyPips pulse", asof, tbl, `Sunday score = your macro commentary (−2…+2). Each free BabyPips daily recap adds +1 for the two strongest and −1 for the two weakest currencies of the day (move vs USD from its scoreboard, minus the 8-currency average, at least ${M.noise}%), and BabyPips news adds ±1 for a clear policy shift. Score now = Sunday + ${M.step} × pulse, kept within −2…+2. Model = score ÷ 2, and it flows into strength, pair scores and the MT5 monitor.`)
+    return card("Macro overlay + BabyPips pulse", asof, tbl, `Sunday score = your macro commentary (−2…+2). Each free BabyPips daily recap adds +1 for the two strongest and −1 for the two weakest currencies of the day (move vs USD from its scoreboard, minus the 8-currency average, at least ${M.noise}%), and BabyPips news adds ±1 for a clear policy shift. ${w.weights && w.weights.macroCalc === "blend" ? "Model Macro = 50% Sunday score (÷2) + 50% BabyPips pulse (net ÷ 2, capped ±1), so a full ±100 needs both to agree. Score now shows that value on the −2…+2 scale." : `Score now = Sunday + ${M.step} × pulse, kept within −2…+2. Model = score ÷ 2.`} It flows into strength, pair scores and the MT5 monitor.`)
       + card("BabyPips updates counted", "Free articles only · checked about 4 AM and 6 PM PKT", et);
   }
   function pulseData(w) {
@@ -405,6 +405,13 @@
   function stateTag(s) { if (!s || s === "n/a") return `<span class="mut">–</span>`; return `<span class="tag ${s === "CONFIRM" ? "up" : s === "OPPOSE" ? "dn" : ""}">${esc(s.toLowerCase())}</span>`; }
 
   function vCOT(w) {
+    const cs = (w.currencies || []).filter((c) => c.cotParts);
+    if (!cs.length) return vCOT0(w);
+    const pt = (v) => pill(v);
+    return card("COT score parts", "50% NC net weekly change (tier by % change: 2/10/25/50% → 25/50/75/100) · 25% COT RSI level, contrarian ((50 − avg 13/26/52) ÷ 50) · 25% NC net position rank",
+      `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">NC net change</th><th class="c">Change (50%)</th><th class="c">RSI level (25%)</th><th class="c">Rank (25%)</th><th class="c">COT score</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="r ${cls(c.cotParts.changePct)}">${sg(c.cotParts.changePct, 1)}%</td><td class="c">${pt(c.cotParts.change)}</td><td class="c">${pt(c.cotParts.rsi)}</td><td class="c">${pt(c.cotParts.rank)}</td><td class="c b">${pt(c.cot)}</td></tr>`).join("")}</tbody></table></div>`) + `<div style="height:16px"></div>` + vCOT0(w);
+  }
+  function vCOT0(w) {
     const c = state.cotCcy;
     const segBar = `<div class="toolbar"><div class="seg">${["ALL", ...CCYS].map((k) => `<button data-cot="${k}" class="${k === c ? "on" : ""}">${k === "ALL" ? "All" : k}</button>`).join("")}</div></div>`;
     if (c === "ALL") {

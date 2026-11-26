@@ -464,6 +464,40 @@ def blend_fund(week):
     return out
 
 
+def _tier(x, S):
+    a = abs(x)
+    return 0 if a < S["db"] else S["s1"] if a < S["t1"] else S["s2"] if a < S["t2"] else S["s3"] if a < S["t3"] else S["s4"]
+
+
+def _rank(vals):
+    order = sorted(vals.values())
+    n = len(order)
+    out = {}
+    for k, v in vals.items():
+        idx = [i for i, x in enumerate(order) if x == v]
+        out[k] = (sum(idx) / len(idx) - (n - 1) / 2) / ((n - 1) / 2)
+    return out
+
+
+def blend_cot(week):
+    """Aamir 26-Nov (parts weighted by strength, like Fund):
+    50% NC net weekly change: sign x tier of % change vs |previous net| (2/10/25/50% -> .25/.5/.75/1, under 2% = 0)
+    25% COT RSI level, contrarian (Sarmaaya playbook S3): (50 - avg of RSI 13/26/52) / 50
+    25% COT ranking: NC net position ranked across the 8 currencies, -1..+1."""
+    S = week["weights"].get("fundSet") or FUND_DEFAULT
+    rk = _rank({c["ccy"]: (c.get("cotCurr") or 0) for c in week["currencies"]})
+    out = {}
+    for c in week["currencies"]:
+        cur, prev = c.get("cotCurr"), c.get("cotPrev")
+        pct = 100.0 * (cur - prev) / abs(prev) if (cur is not None and prev) else 0.0
+        chg = sgn(pct) * _tier(pct, S)
+        rs = [c.get(k) for k in ("rsi13", "rsi26", "rsi52") if c.get(k) is not None]
+        lvl = (50 - sum(rs) / len(rs)) / 50 if rs else 0.0
+        c["cotParts"] = {"change": round(chg, 4), "changePct": round(pct, 2), "rsi": round(lvl, 4), "rank": round(rk[c["ccy"]], 4)}
+        out[c["ccy"]] = round(0.5 * chg + 0.25 * lvl + 0.25 * rk[c["ccy"]], 6) + 0.0
+    return out
+
+
 def rank_fund(week):
     """Fund input = raw Investogenie change ranked across the 8 currencies, -1 (lowest) .. +1 (highest), ties averaged,
     then x confirmation multiplier (Aamir 26-Nov: full 100 only with both Latest and Conditional confirming)."""
@@ -502,10 +536,17 @@ def apply_new_weights(week, weights=None):
     wt["fundCalc"] = "blend"
     week["weights"] = wt
     rf = blend_fund(week)
+    rc = blend_cot(week)
+    wt["cotCalc"] = wt["macroCalc"] = "blend"
+    mb = {}
     for c in week["currencies"]:
         c.setdefault("fundScored", c["fund"])
+        c.setdefault("cotScored", c["cot"])
+        c.setdefault("macroScored", c["macro"])
         c.setdefault("strengthOld", c["strength"])
         c["fund"] = rf[c["ccy"]]
+        c["cot"] = rc[c["ccy"]]
+        c["macro"] = mb[c["ccy"]] = 0.25 * (c.get("macroRaw") or 0)  # 50% part: Sunday score / 2; pulse part 0 until BabyPips
         c["strength"] = _strength(wt, c)
     for i, c in enumerate(sorted(week["currencies"], key=lambda x: -x["strength"])):
         c["rank"] = i + 1
@@ -516,6 +557,8 @@ def apply_new_weights(week, weights=None):
     for u in week.get("updates", []):
         for c in u["currencies"]:
             c["fund"] = rf[c["ccy"]]
+            c["cot"] = rc[c["ccy"]]
+            c["macro"] = mb[c["ccy"]]
             c["strength"] = _strength(wt, c)
         for i, c in enumerate(sorted(u["currencies"], key=lambda x: -x["strength"])):
             c["rank"] = i + 1
@@ -575,8 +618,14 @@ def compute_macro_pulse(week, recap_csv, notes_csv):
     for c in week["currencies"]:
         base = c.get("macroRaw") or 0
         net = sum(days[c["ccy"]])
-        adj = max(-2.0, min(2.0, base + MACRO_STEP * net))
-        rows.append({"ccy": c["ccy"], "sunday": base, "days": days[c["ccy"]], "net": net, "adjRaw": adj, "macroPlan": c["macro"], "macro": adj / 2})
+        if week["weights"].get("macroCalc") == "blend":   # Aamir 26-Nov: 50% Sunday (score/2) + 50% pulse (net/2, capped)
+            pm = max(-1.0, min(1.0, net / 2.0))
+            m = 0.5 * base / 2 + 0.5 * pm
+            adj = 2 * m
+        else:
+            adj = max(-2.0, min(2.0, base + MACRO_STEP * net))
+            m = adj / 2
+        rows.append({"ccy": c["ccy"], "sunday": base, "days": days[c["ccy"]], "net": net, "adjRaw": adj, "macroPlan": c["macro"], "macro": round(m, 6)})
     return {"at": last, "rows": rows, "entries": entries, "step": MACRO_STEP, "noise": MACRO_NOISE}
 
 
