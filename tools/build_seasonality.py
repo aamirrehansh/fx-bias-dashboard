@@ -113,7 +113,7 @@ rng = pd.DataFrame(HL).T; rng.index.name = "Symbol"
 d0, d1 = wk_dates(lk); ny, nw = (pd.Timestamp.fromisocalendar(int(lk[:4]), int(lk[5:]), 1) + pd.Timedelta(days=7)).isocalendar()[:2]
 n0, n1 = wk_dates(f"{ny}-{nw:02d}")
 INS = {"built": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "basedOn": f"{d0} - {d1}", "appliesTo": f"{n0} - {n1}",
-       "stretch": [{"ccy": c, **{k: (None if pd.isna(v) else v) for k, v in stretch.loc[c].items()}} for c in CC],
+       "stretch": [{"ccy": c, **{k: (None if pd.isna(v) else (v.item() if hasattr(v, "item") else v)) for k, v in stretch.loc[c].items()}} for c in CC],
        "range": [{"sym": s, **{k: float(v) for k, v in rng.loc[s].items()}} for s in rng.index],
        "note": "Stretch = last week's move vs typical weekly swing (26w std). >2x = STRETCHED, fade next week (2017-26 backtest: 56% hit, +0.15% avg). Expected range = median weekly high-low of last 8 weeks."}
 nxt = int(pd.Timestamp.now().isocalendar()[1]) + 1
