@@ -322,6 +322,15 @@
     return h;
   }
 
+  function vInsight() {
+    const I = window.FXINSIGHT;
+    if (!I) return "";
+    const st = I.stretch.map((r) => `<tr><td class="ccy">${r.ccy}</td><td class="r ${cls(r["move %"])}">${sg(r["move %"], 2)}%</td><td class="r mut">${f(r["typical %"], 2)}%</td><td class="r b ${Math.abs(r["x typical"]) > 2 ? cls(r["x typical"]) : ""}">${sg(r["x typical"], 2)}×</td><td>${r.flag ? `<span class="tag ${r.flag === "STRETCHED" ? "warn" : ""}">${r.flag}</span>` : ""}</td><td class="${r["fade side next week"] === "BUY" ? "up" : r["fade side next week"] === "SELL" ? "dn" : ""} b">${esc(r["fade side next week"] || "")}</td></tr>`).join("");
+    const rg = I.range.map((r) => `<tr><td class="ccy">${r.sym}</td><td class="r b">${f(r["expected week (pips)"], 0)}</td><td class="r">${f(r["last week (pips)"], 0)}</td><td class="r mut">${f(r["10y avg week (pips)"], 0)}</td><td class="r">${f(r["daily ATR14 (pips)"], 0)}</td></tr>`).join("");
+    return card("Stretch flag (MT5)", `Last week ${esc(I.basedOn)} → applies to ${esc(I.appliesTo)}`, `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">Move vs 7</th><th class="r">Typical swing</th><th class="r">× typical</th><th>Flag</th><th>Fade side</th></tr></thead><tbody>${st}</tbody></table></div>`, "A move over 2× the currency's typical weekly swing (last 26 weeks) tends to partly reverse next week: 56% hit, +0.15% average, 2017–2026 MT5 backtest. 1.5–2× = watch. Info only, not in the score.")
+      + card("Expected weekly range (MT5)", `Built ${esc(I.built)} from OneRoyal daily bars`, `<div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Expected week</th><th class="r">Last week</th><th class="r">10y avg week</th><th class="r">Daily ATR14</th></tr></thead><tbody>${rg}</tbody></table></div>`, "Pips (JPY pairs 0.01; gold $0.10; USTEC 1 point). Expected = median weekly high–low of the last 8 weeks. Use for stop and target sizing; it gives no direction.");
+  }
+
   function vFactors(w) {
     if (w.missing) return missing(w);
     const s = snapshot(w);
@@ -336,6 +345,7 @@
       h += vCOT(w);
     } else if (state.factor === "seas") {
       h += card("Seasonality", "Sarmaaya Seasonality Score 1 and 2 (−10…+10)", `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">Score 1</th><th class="r">Score 2</th><th class="c">Model score</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="r ${cls(c.seas1)}">${sg(c.seas1, 0)}</td><td class="r ${cls(c.seas2)}">${sg(c.seas2, 0)}</td><td class="c">${pill(c.seas)}</td></tr>`).join("")}</tbody></table></div>`);
+      h += vInsight();
     } else if (w.macroPulse && w.macroPulse.rows) {
       h += vMacroPulse(w, cs);
     } else {
