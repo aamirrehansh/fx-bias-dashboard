@@ -992,6 +992,21 @@ string BuildJson()
       j+=StringFormat("%s\"%s\":%s",(first?"":","),gPairs[p].pair,DoubleToString(bid,(int)SymbolInfoInteger(gPairs[p].sym,SYMBOL_DIGITS)));
       first=false;
    }
+   // 1.08: this week's running range per symbol: [last Friday close, week high, week low, bid] (W1 bar 0)
+   j+="},\"weekRange\":{";
+   first=true;
+   string wl[]; int nw=ArraySize(gPairs); ArrayResize(wl,nw+2);
+   for(int p=0;p<nw;p++) wl[p]=gPairs[p].pair;
+   wl[nw]="XAUUSD"; wl[nw+1]="USTEC";
+   for(int p=0;p<ArraySize(wl);p++)
+   {
+      string sy=(p<nw?gPairs[p].sym:D1Resolve(wl[p])); if(sy=="") continue;
+      double pc=iClose(sy,PERIOD_W1,1), hi=iHigh(sy,PERIOD_W1,0), lo=iLow(sy,PERIOD_W1,0), bd=SymbolInfoDouble(sy,SYMBOL_BID);
+      if(pc<=0 || hi<=0 || lo<=0 || bd<=0) continue;
+      int dg=(int)SymbolInfoInteger(sy,SYMBOL_DIGITS);
+      j+=StringFormat("%s\"%s\":[%s,%s,%s,%s]",(first?"":","),wl[p],DoubleToString(pc,dg),DoubleToString(hi,dg),DoubleToString(lo,dg),DoubleToString(bd,dg));
+      first=false;
+   }
    j+="},\"alerts\":[";
    for(int a=0;a<ArraySize(gAlerts);a++) j+=(a?",":"")+gAlerts[a];
    j+="]}";

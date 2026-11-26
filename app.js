@@ -322,13 +322,30 @@
     return h;
   }
 
-  function vInsight() {
+  function vInsight(w) {
     const I = window.FXINSIGHT;
     if (!I) return "";
-    const st = I.stretch.map((r) => `<tr><td class="ccy">${r.ccy}</td><td class="r ${cls(r["move %"])}">${sg(r["move %"], 2)}%</td><td class="r mut">${f(r["typical %"], 2)}%</td><td class="r b ${Math.abs(r["x typical"]) > 2 ? cls(r["x typical"]) : ""}">${sg(r["x typical"], 2)}×</td><td>${r.flag ? `<span class="tag ${r.flag === "STRETCHED" ? "warn" : ""}">${r.flag}</span>` : ""}</td><td class="${r["fade side next week"] === "BUY" ? "up" : r["fade side next week"] === "SELL" ? "dn" : ""} b">${esc(r["fade side next week"] || "")}</td><td class="c">${isNum(r.score) ? pill(r.score) : ""}</td></tr>`).join("");
-    const rg = I.range.map((r) => `<tr><td class="ccy">${r.sym}</td><td class="r b">${f(r["expected week (pips)"], 0)}</td><td class="r">${f(r["last week (pips)"], 0)}</td><td class="r mut">${f(r["10y avg week (pips)"], 0)}</td><td class="r">${f(r["daily ATR14 (pips)"], 0)}</td></tr>`).join("");
-    return card("Stretch flag (MT5)", `Last week ${esc(I.basedOn)} → applies to ${esc(I.appliesTo)}`, `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">Move vs 7</th><th class="r">Typical swing</th><th class="r">× typical</th><th>Flag</th><th>Fade side</th><th class="c">Score</th></tr></thead><tbody>${st}</tbody></table></div>`, "A move over 2× the currency's typical weekly swing (last 26 weeks) tends to partly reverse next week: 56% hit, +0.15% average, 2017–2026 MT5 backtest. 1.5–2× = watch. Score = fade side, 100 over 2×, 50 at 1.5–2×; from the 30 Nov plan it replaces Sarmaaya seasonality in the 5% Seasonality slot (Aamir 26-Nov).")
-      + card("Expected weekly range (MT5)", `Built ${esc(I.built)} from OneRoyal daily bars`, `<div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Expected week</th><th class="r">Last week</th><th class="r">10y avg week</th><th class="r">Daily ATR14</th></tr></thead><tbody>${rg}</tbody></table></div>`, "Pips (JPY pairs 0.01; gold $0.10; USTEC 1 point). Expected = median weekly high–low of the last 8 weeks. Use for stop and target sizing; it gives no direction.");
+    // running this-week values (MT5 live: [last Fri close, week high, week low, bid]); fallback ECB/live prices via ccyWeekMove
+    const L = state.live, run = isCurrent(w) && w.start === I.appliesMonday;
+    const wk = run && L && L.week === w.id && L.weekRange ? L.weekRange : null;
+    const pipOf = (s) => (s === "USTEC" ? 1 : s === "XAUUSD" ? 0.1 : s.endsWith("JPY") ? 0.01 : 0.0001);
+    let mvNow = null, mvSrc = "";
+    if (run && wk) {
+      const acc = {}; CCYS.forEach((c) => (acc[c] = []));
+      for (const [pr, v] of Object.entries(wk)) {
+        const a = pr.slice(0, 3), b = pr.slice(3);
+        if (!acc[a] || !acc[b] || !(v[0] > 0)) continue;
+        const r = Math.log(v[3] / v[0]) * 100; acc[a].push(r); acc[b].push(-r);
+      }
+      mvNow = {}; CCYS.forEach((c) => (mvNow[c] = acc[c].length ? acc[c].reduce((x, y) => x + y, 0) / acc[c].length : null));
+      mvSrc = "MT5 live " + (L.at ? new Date(L.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "");
+    } else if (run) {
+      const m = ccyWeekMove(w); if (m) { mvNow = m.v; mvSrc = m.src; }
+    }
+    const st = I.stretch.map((r) => { const now = mvNow && mvNow[r.ccy], xn = isNum(now) && r["typical %"] ? now / r["typical %"] : null, fs = r["fade side next week"], ok = fs && isNum(now) ? (fs === "BUY" ? now > 0 : now < 0) : null; return `<tr><td class="ccy">${r.ccy}</td><td class="r ${cls(r["move %"])}">${sg(r["move %"], 2)}%</td><td class="r mut">${f(r["typical %"], 2)}%</td><td class="r b ${Math.abs(r["x typical"]) > 2 ? cls(r["x typical"]) : ""}">${sg(r["x typical"], 2)}×</td><td>${r.flag ? `<span class="tag ${r.flag === "STRETCHED" ? "warn" : ""}">${r.flag}</span>` : ""}</td><td class="${r["fade side next week"] === "BUY" ? "up" : r["fade side next week"] === "SELL" ? "dn" : ""} b">${esc(r["fade side next week"] || "")}</td><td class="c">${isNum(r.score) ? pill(r.score / 100) : ""}</td>${run ? `<td class="r b ${cls(now, 0.02)}">${isNum(now) ? sg(now, 2) + "%" : "–"}</td><td class="r">${isNum(xn) ? sg(xn, 2) + "×" : "–"}</td><td class="c">${ok === null ? "" : ok ? '<span class="up b">✓ fading</span>' : '<span class="dn b">✗ extending</span>'}</td>` : ""}</tr>`; }).join("");
+    const rg = I.range.map((r) => { const v = wk && wk[r.sym], pp = pipOf(r.sym), so = v ? (v[1] - v[2]) / pp : null, mvp = v ? (v[3] - v[0]) / pp : null, pc = isNum(so) && r["expected week (pips)"] ? (so / r["expected week (pips)"]) * 100 : null; return `<tr><td class="ccy">${r.sym}</td><td class="r b">${f(r["expected week (pips)"], 0)}</td>${wk ? `<td class="r b">${f(so, 0)}</td><td class="r ${isNum(pc) && pc >= 100 ? "dn b" : ""}">${isNum(pc) ? Math.round(pc) + "%" : "–"}</td><td class="r ${cls(mvp)}">${isNum(mvp) ? sg(mvp, 0) : "–"}</td>` : ""}<td class="r">${f(r["last week (pips)"], 0)}</td><td class="r mut">${f(r["10y avg week (pips)"], 0)}</td><td class="r">${f(r["daily ATR14 (pips)"], 0)}</td></tr>`; }).join("");
+    return card("Stretch flag (MT5)", `Last week ${esc(I.basedOn)} → applies to ${esc(I.appliesTo)}`, `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">Move vs 7</th><th class="r">Typical swing</th><th class="r">× typical</th><th>Flag</th><th>Fade side</th><th class="c">Score</th>${run ? '<th class="r">This week so far</th><th class="r">× typical now</th><th class="c">Fade working?</th>' : ""}</tr></thead><tbody>${st}</tbody></table></div>`, "A move over 2× the currency's typical weekly swing (last 26 weeks) tends to partly reverse next week: 56% hit, +0.15% average, 2017–2026 MT5 backtest. 1.5–2× = watch. Score = fade side, 100 over 2×, 50 at 1.5–2×; from the 30 Nov plan it replaces Sarmaaya seasonality in the 5% Seasonality slot (Aamir 26-Nov)." + (mvSrc ? ` This week so far = currency move vs the other 7 since last Friday close (${esc(mvSrc)}).` : ""))
+      + card("Expected weekly range (MT5)", `Built ${esc(I.built)} from OneRoyal daily bars`, `<div class="tw"><table><thead><tr><th>Symbol</th><th class="r">Expected week</th>${wk ? '<th class="r">Range so far</th><th class="r">% of expected</th><th class="r">Move from Fri close</th>' : ""}<th class="r">Last week</th><th class="r">10y avg week</th><th class="r">Daily ATR14</th></tr></thead><tbody>${rg}</tbody></table></div>`, "Pips (JPY pairs 0.01; gold $0.10; USTEC 1 point). Expected = median weekly high–low of the last 8 weeks. Use for stop and target sizing; it gives no direction." + (wk ? " Range so far / move = this week from MT5 live, refreshed with each monitor upload (~11 min)." : run ? " Range so far appears once FX Bias Monitor (updated 1.08) is uploading." : ""));
   }
 
   function vFactors(w) {
@@ -345,7 +362,7 @@
       h += vCOT(w);
     } else if (state.factor === "seas") {
       h += card("Seasonality", "Sarmaaya Seasonality Score 1 and 2 (−10…+10)", `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">Score 1</th><th class="r">Score 2</th><th class="c">Model score</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="r ${cls(c.seas1)}">${sg(c.seas1, 0)}</td><td class="r ${cls(c.seas2)}">${sg(c.seas2, 0)}</td><td class="c">${pill(c.seas)}</td></tr>`).join("")}</tbody></table></div>`);
-      h += vInsight();
+      h += vInsight(w);
     } else if (w.macroPulse && w.macroPulse.rows) {
       h += vMacroPulse(w, cs);
     } else {
