@@ -12,7 +12,7 @@
 //|    DowFibEngine_v14.mqh = Aamir's TradingView indicator v14) and  |
 //|    push NEW SETUP alerts. Needs DowFibEngine_v14.mqh next to it. |
 //|  - V1.07: shortlist always gated live; push only if |score|>=50|
-//|  - V1.08: Saturday D1 export to FXDaily (WeeklyD1Export)        |
+//|  - V1.08: Saturday export of last 21 D1 bars to FXDaily\recent    |
 //|  - V1.08: defaults ConvictionLine/ScanMinScore 25 (26-Nov rescale)|
 //|  - V1.08: plan "FR" rows = Fund is raw Investogenie rank; Pulse  |
 //|    still counts Conditional but no longer rewrites Fund         |
@@ -63,8 +63,8 @@ input int    H1Days         = 120;     // Dow Fib H1: lookback days
 input int    DFBreakBars    = 2;       // Dow Fib: closes beyond HL / LH to end trend
 input double DFBreakBuf     = 0.5;     // Dow Fib: break buffer x ATR
 input string CheckAsOfUTC   = "2026.11.21 19:50";   // one-off check vs Sunday TradingView read (blank = off)
-input bool   WeeklyD1Export = true;    // 1.08: every Saturday export 10y D1 closes (28 pairs + XAUUSD + USTEC) to Common\Files\FXDaily for seasonality
-input int    D1ExportYears  = 10;
+input bool   WeeklyD1Export = true;    // 1.08: every Saturday export the last D1ExportDays daily bars (28 pairs + XAUUSD + USTEC) to Common\Files\FXDaily\recent
+input int    D1ExportDays   = 21;      // calendar days per weekly export (only new days are appended to the 10y history)
 
 //--- model data
 string   CCY[8] = {"USD","EUR","GBP","JPY","CHF","CAD","AUD","NZD"};
@@ -175,9 +175,9 @@ void WeeklyExport()
    if(gD1ExportWeek==wk) return;
    string list[]={"EURUSD","GBPUSD","AUDUSD","NZDUSD","USDJPY","USDCHF","USDCAD","EURGBP","EURAUD","EURNZD","EURJPY","EURCHF","EURCAD",
                   "GBPAUD","GBPNZD","GBPJPY","GBPCHF","GBPCAD","AUDNZD","AUDJPY","AUDCHF","AUDCAD","NZDJPY","NZDCHF","NZDCAD","CADJPY","CADCHF","CHFJPY","XAUUSD","USTEC"};
-   datetime from=TimeCurrent()-(datetime)((long)D1ExportYears*365*86400+5*86400);
+   datetime from=TimeCurrent()-(datetime)((long)D1ExportDays*86400);
    int ok=0;
-   int s=FileOpen("FXDaily\\_summary.csv",FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
+   int s=FileOpen("FXDaily\\recent\\_summary.csv",FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
    if(s!=INVALID_HANDLE) FileWriteString(s,"symbol,bars,first,last,server\r\n");
    for(int i=0;i<ArraySize(list);i++)
    {
@@ -185,7 +185,7 @@ void WeeklyExport()
       MqlRates r[]; int got=CopyRates(sym,PERIOD_D1,from,TimeCurrent(),r);
       if(got<=0) continue;
       int dg=(int)SymbolInfoInteger(sym,SYMBOL_DIGITS);
-      int h=FileOpen("FXDaily\\"+list[i]+"_D1.csv",FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
+      int h=FileOpen("FXDaily\\recent\\"+list[i]+"_D1.csv",FILE_WRITE|FILE_TXT|FILE_ANSI|FILE_COMMON);
       if(h==INVALID_HANDLE) continue;
       FileWriteString(h,"date,open,high,low,close,tick_volume\r\n");
       for(int k=0;k<got;k++)
@@ -195,7 +195,7 @@ void WeeklyExport()
       if(s!=INVALID_HANDLE) FileWriteString(s,StringFormat("%s,%d,%s,%s,%s\r\n",list[i],got,TimeToString(r[0].time,TIME_DATE),TimeToString(r[got-1].time,TIME_DATE),AccountInfoString(ACCOUNT_SERVER)));
    }
    if(s!=INVALID_HANDLE) FileClose(s);
-   if(ok>=ArraySize(list)-1){ gD1ExportWeek=wk; PrintFormat("FX Bias Monitor: weekly D1 export done, %d symbols -> Common\\Files\\FXDaily",ok); }
+   if(ok>=ArraySize(list)-1){ gD1ExportWeek=wk; PrintFormat("FX Bias Monitor: weekly D1 export done, %d symbols -> Common\\Files\\FXDaily\\recent",ok); }
    else PrintFormat("FX Bias Monitor: weekly D1 export got %d of %d symbols, will retry",ok,ArraySize(list));
 }
 
