@@ -143,6 +143,28 @@
     const out = {}; CCYS.forEach((c) => (out[c] = raw[c] - m));
     return { v: out, final: wd.close >= w.end };
   }
+  function ccyWeekMove(w) {
+    // Currency move this week: average log % change of its 7 pairs since the previous Friday close (+ = currency stronger).
+    const wd = weekDates(w); if (!wd.open) return null;
+    const useLive = isCurrent(w) && state.live && state.live.week === w.id && state.live.prices;
+    const acc = {}; CCYS.forEach((c) => (acc[c] = []));
+    let nLive = 0;
+    for (let i = 0; i < CCYS.length; i++) for (let j = i + 1; j < CCYS.length; j++) {
+      const a = CCYS[i], b = CCYS[j];
+      const p = (w.pairs || []).find((x) => x.pair === a + b || x.pair === b + a); if (!p) continue;
+      const o = price(p.pair, wd.open); if (!o) continue;
+      let c = useLive ? livePrice(w, p.pair) : null;
+      if (c) nLive++; else if (wd.close) c = price(p.pair, wd.close);
+      if (!c) continue;
+      const ch = Math.log(c / o) * 100;
+      acc[p.pair.slice(0, 3)].push(ch); acc[p.pair.slice(3)].push(-ch);
+    }
+    const v = {}; CCYS.forEach((c) => (v[c] = acc[c].length ? acc[c].reduce((t, x) => t + x, 0) / acc[c].length : null));
+    const rank = {}; CCYS.filter((c) => isNum(v[c])).sort((x, y) => v[y] - v[x]).forEach((c, i) => (rank[c] = i + 1));
+    if (!Object.keys(rank).length) return null;
+    const src = nLive ? "MT5 live prices" : wd.close && wd.close >= w.end ? "ECB final" : "ECB daily so far, " + wd.close;
+    return { v, rank, src };
+  }
   function spearman(xs, ys) {
     const rk = (a) => { const idx = a.map((v, i) => [v, i]).sort((p, q) => q[0] - p[0]); const r = []; idx.forEach((e, i) => (r[e[1]] = i + 1)); return r; };
     const rx = rk(xs), ry = rk(ys), n = xs.length; let d2 = 0; for (let i = 0; i < n; i++) d2 += (rx[i] - ry[i]) ** 2;
@@ -264,9 +286,15 @@
     const cs = Object.values(s.ccy).sort((a, b) => b.strength - a.strength);
     const wt = w.weights || {};
     const pct = (x) => (isNum(x) ? Math.round(x * 100) + "%" : "");
+    const mv = ccyWeekMove(w);
+    const mvCell = (c) => {
+      const x = mv && mv.v[c.ccy]; if (!isNum(x)) return `<span class="mut">–</span>`;
+      const sc = c.strength || 0, ok = Math.sign(x) === Math.sign(sc);
+      return `<span class="b ${cls(x, 0.02)}">${sg(x, 2)}%</span> <span class="mut" style="font-size:10px">#${mv.rank[c.ccy]}${Math.abs(sc) > 0 ? (ok ? " ✓" : " ✗") : ""}</span>`;
+    };
     let h = card("Ranking by layer", `Factor scores −100…+100 · weights Fund ${pct(wt.fund)}, COT ${pct(wt.cot)}, Seas ${pct(wt.seas)}, News ${pct(wt.news)}, Macro ${pct(wt.macro)}`,
-      `<div class="tw"><table><thead><tr><th>#</th><th>CCY</th><th>Score</th><th class="c">Fund</th><th class="c">COT</th><th class="c">Seas</th><th class="c">News</th><th class="c">Macro</th><th>Flags</th></tr></thead><tbody>${cs.map((c, i) => `<tr><td class="mut">${i + 1}</td><td class="ccy ${cls(c.strength, 4)}">${c.ccy}</td><td class="b ${cls(c.strength)}">${sg(c.strength, 1)}</td><td class="c">${pill(c.fund)}</td><td class="c">${pill(c.cot)}</td><td class="c">${pill(c.seas)}</td><td class="c">${pill(c.news)}${isNum(c.planNews) && c.planNews !== c.news ? `<div class="mut" style="font-size:10px">plan ${Math.round(c.planNews * 100)}</div>` : ""}</td><td class="c">${pill(c.macro)}</td><td class="wrap">${flagsFor(c)}</td></tr>`).join("")}</tbody></table></div>`,
-      `Updated · ${s.at ? new Date(s.at).toLocaleString() : w.start + " (Sunday plan)"}`);
+      `<div class="tw"><table><thead><tr><th>#</th><th>CCY</th><th>Score</th><th class="r">This week</th><th class="c">Fund</th><th class="c">COT</th><th class="c">Seas</th><th class="c">News</th><th class="c">Macro</th><th>Flags</th></tr></thead><tbody>${cs.map((c, i) => `<tr><td class="mut">${i + 1}</td><td class="ccy ${cls(c.strength, 4)}">${c.ccy}</td><td class="b ${cls(c.strength)}">${sg(c.strength, 1)}</td><td class="r">${mvCell(c)}</td><td class="c">${pill(c.fund)}</td><td class="c">${pill(c.cot)}</td><td class="c">${pill(c.seas)}</td><td class="c">${pill(c.news)}${isNum(c.planNews) && c.planNews !== c.news ? `<div class="mut" style="font-size:10px">plan ${Math.round(c.planNews * 100)}</div>` : ""}</td><td class="c">${pill(c.macro)}</td><td class="wrap">${flagsFor(c)}</td></tr>`).join("")}</tbody></table></div>`,
+      `Updated · ${s.at ? new Date(s.at).toLocaleString() : w.start + " (Sunday plan)"}` + (mv ? ` · This week = average move of the currency against the other 7 since last Friday close (${esc(mv.src)}); #rank by move; ✓ = moving with the model score` : ""));
     const rows = cs.map((c) => {
       const lw = pw && (pw.currencies || []).find((x) => x.ccy === c.ccy);
       const ch = lw ? c.strength - lw.strength : null;
