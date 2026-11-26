@@ -21,7 +21,7 @@ def main(wid=None, reweight=False):
     raw = open(WJS, encoding="utf-8").read().strip()
     data = json.loads(raw[len(PFX):].rstrip(";"))
     w = [x for x in data["weeks"] if x["id"] == wid][0] if wid else [x for x in data["weeks"] if not x.get("missing")][-1]
-    if reweight and w["weights"].get("fundMode") != "rank":
+    if reweight:
         w["updates"] = [u for u in w.get("updates", []) if not u.get("macroPulse")]
         apply_new_weights(w)
     rc = os.path.join(ROOT, "data/pulse/babypips_%s.csv" % w["id"])

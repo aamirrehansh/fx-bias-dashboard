@@ -431,8 +431,24 @@ def compute_pulse(week, ff_csv, tracked, asof=None):
 NEW_WEIGHTS = {"fund": 0.40, "cot": 0.15, "seas": 0.05, "news": 0.10, "macro": 0.30}  # Aamir 26-Nov-2026 (factor weight review)
 
 
+def conf_mult(L, O, P, S):
+    """Workbook confirmation multiplier (Settings m1..m6 + boost, capped 1): both confirm 1, one confirm .75,
+    one confirm + one oppose .5, none .5, none + one oppose .25, both oppose 0. |Investogenie chg| < deadband -> 0."""
+    L, O, P = L or 0, O or 0, P or 0
+    if abs(L) < S["db"]:
+        return 0.0
+    M = sgn(L)
+    st = lambda n: "FLAT" if n == 0 else ("CONFIRM" if sgn(n) == M else "OPPOSE")
+    Q, R = st(O), st(P)
+    C, Op = (Q == "CONFIRM") + (R == "CONFIRM"), (Q == "OPPOSE") + (R == "OPPOSE")
+    U = S["m1"] if C == 2 else S["m2"] if (C == 1 and Op == 0) else S["m3"] if (C == 1 and Op == 1) else S["m4"] if (C == 0 and Op == 0) else S["m5"] if (C == 0 and Op == 1) else S["m6"]
+    V = S["boost"] if ((Q == "CONFIRM" and abs(O) >= S["sn"]) or (R == "CONFIRM" and abs(P) >= S["sn"])) else 0
+    return min(1.0, U + V)
+
+
 def rank_fund(week):
-    """Fund input = raw Investogenie change ranked across the 8 currencies, -1 (lowest) .. +1 (highest), ties averaged."""
+    """Fund input = raw Investogenie change ranked across the 8 currencies, -1 (lowest) .. +1 (highest), ties averaged,
+    then x confirmation multiplier (Aamir 26-Nov: full 100 only with both Latest and Conditional confirming)."""
     vals = {c["ccy"]: (c.get("investChg") or 0.0) for c in week["currencies"]}
     order = sorted(vals.values())
     n = len(order)
@@ -440,7 +456,12 @@ def rank_fund(week):
     for k, v in vals.items():
         idx = [i for i, x in enumerate(order) if x == v]
         r = sum(idx) / len(idx)
-        out[k] = round((r - (n - 1) / 2) / ((n - 1) / 2), 6)
+        out[k] = (r - (n - 1) / 2) / ((n - 1) / 2)
+    S = week["weights"].get("fundSet") or FUND_DEFAULT
+    for c in week["currencies"]:
+        m = conf_mult(c.get("investChg"), c.get("latestNet"), (c.get("condPlus") or 0) - (c.get("condMinus") or 0), S)
+        c["fundRank"], c["fundConf"] = round(out[c["ccy"]], 6), m
+        out[c["ccy"]] = round(out[c["ccy"]] * m, 6) + 0.0
     return out
 
 
@@ -457,7 +478,7 @@ def apply_new_weights(week, weights=None):
     """Switch a week to the reviewed weights + raw-Investogenie-rank Fund. Re-scores the Sunday plan
     (keeps oldWeights / fundScored / planStrengthOld for reference) and every intra-week snapshot."""
     wt = dict(week["weights"])
-    wt["old"] = {k: week["weights"][k] for k in ("fund", "cot", "seas", "news", "macro")}
+    wt.setdefault("old", {k: week["weights"][k] for k in ("fund", "cot", "seas", "news", "macro")})
     wt.update(weights or NEW_WEIGHTS)
     wt["fundMode"] = "rank"
     week["weights"] = wt
