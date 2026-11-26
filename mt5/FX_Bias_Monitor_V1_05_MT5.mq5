@@ -12,6 +12,7 @@
 //|    DowFibEngine_v14.mqh = Aamir's TradingView indicator v14) and  |
 //|    push NEW SETUP alerts. Needs DowFibEngine_v14.mqh next to it. |
 //|  - V1.07: shortlist always gated live; push only if |score|>=50|
+//|  - V1.08: defaults ConvictionLine/ScanMinScore 25 (26-Nov rescale)|
 //|  - V1.08: plan "FR" rows = Fund is raw Investogenie rank; Pulse  |
 //|    still counts Conditional but no longer rewrites Fund         |
 //|  - push alerts (MetaTrader app) when a shortlisted pair's bias   |
@@ -38,7 +39,7 @@ input bool   PushAlerts     = true;    // SendNotification to the MetaTrader mob
 input bool   PopupAlerts    = true;    // terminal Alert() popup
 input bool   PushKeyOnly    = true;    // 1.06: phone push + popup only for NEW SETUP and BIAS FLIPPED (all else -> log + app)
 input double ScoreAlertDrop = 15.0;    // alert if |score| weakens by this much vs plan
-input double ConvictionLine = 50.0;    // alert if |score| falls below this (from above)
+input double ConvictionLine = 25.0;    // alert if |score| falls below this (from above)
 input bool   AlertWatchPairs= true;    // include WATCH / RESERVE pairs in alerts
 input string GitHubToken    = "";      // fine-grained token: Contents read/write on fx-bias-dashboard only (blank = no upload)
 input string GitHubRepo     = "aamirrehansh/fx-bias-dashboard";
@@ -50,7 +51,7 @@ input bool   UsePulse       = true;    // V1.04: live Conditional (Investogenie 
 input int    PulsePollSec   = 180;     // Pulse: FF poll interval (seconds)
 input bool   PulsePush      = true;    // push when a currency's Conditional state / fundamental score changes
 input bool   ScanSetups     = true;    // V1.05: scan all 28 pairs for new setups at every H1 close
-input double ScanMinScore   = 50.0;    // scanner: min |live pair score|
+input double ScanMinScore   = 25.0;    // scanner: min |live pair score|
 input bool   SetupPush      = true;    // scanner: push NEW SETUP alerts
 input double D1FibMin       = 23.6;    // Dow Fib D1: min retracement for HL / LH (%)
 input int    D1Swing        = 5;       // Dow Fib D1: swing confirmation bars

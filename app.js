@@ -5,6 +5,7 @@
   const CCYS = D.ccys && D.ccys.length ? D.ccys : ["USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD"];
   const WEEKS = D.weeks.slice().sort((a, b) => a.id.localeCompare(b.id));
   const SHORT = ["TRADE", "RESERVE", "WATCH"];
+  const SCORE_LINE = 25;  // Aamir 26-Nov: conviction line after the parts-based Fund/COT/Macro (backtest 2-27 Nov: ~8 pairs/week, 66% hit)
   const LS = {
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
@@ -88,7 +89,7 @@
       if (p.planBias && p.bias !== p.planBias) out.push({ lvl: "dn", pair: p.pair, text: `${p.pair}: bias flipped ${p.planBias} → ${p.bias} (score ${sg(p.planScore)} → ${sg(p.score)}). Consider closing / not entering.` });
       else if (isNum(p.planScore) && isNum(p.score)) {
         const d = Math.abs(p.score) - Math.abs(p.planScore);
-        if (Math.abs(p.planScore) >= 50 && Math.abs(p.score) < 50) out.push({ lvl: "warn", pair: p.pair, text: `${p.pair}: score fell below 50 (${sg(p.planScore)} → ${sg(p.score)}). Conviction reduced.` });
+        if (Math.abs(p.planScore) >= SCORE_LINE && Math.abs(p.score) < SCORE_LINE) out.push({ lvl: "warn", pair: p.pair, text: `${p.pair}: score fell below ${SCORE_LINE} (${sg(p.planScore)} → ${sg(p.score)}). Conviction reduced.` });
         else if (d <= -15) out.push({ lvl: "warn", pair: p.pair, text: `${p.pair}: score weakened ${sg(p.planScore)} → ${sg(p.score)}.` });
         else if (d >= 15) out.push({ lvl: "ok", pair: p.pair, text: `${p.pair}: score strengthened ${sg(p.planScore)} → ${sg(p.score)}.` });
       }
@@ -390,7 +391,7 @@
     const hist = keyAl.map((a) => `<div class="kb-row ${/BIAS FLIPPED/.test(a.text) ? "dn" : "up"}"><span class="kb-ic">${/BIAS FLIPPED/.test(a.text) ? "🔄" : "🔔"}</span><div style="flex:1">${esc(a.text)}</div>${t(a)}</div>`).join("");
     const n = entries.length;
     const head = n ? `${n} entry setup${n === 1 ? "" : "s"} ready now` : "No entry setup right now";
-    const empty = !now && !hist ? `<div class="mut" style="font-size:13px">The scanner checks every shortlisted pair, plus any pair with a live |score| ≥ 50, at each H1 close. New setups and bias flips will appear here first${L.at ? " · last update " + new Date(L.at).toLocaleTimeString() : ""}.</div>` : "";
+    const empty = !now && !hist ? `<div class="mut" style="font-size:13px">The scanner checks every shortlisted pair, plus any pair with a live |score| ≥ 25, at each H1 close. New setups and bias flips will appear here first${L.at ? " · last update " + new Date(L.at).toLocaleTimeString() : ""}.</div>` : "";
     return `<section class="keybox ${n ? "on" : ""}" style="margin-top:16px"><div class="kb-h"><span>🎯 New setups &amp; bias flips</span><span class="mut" style="font-weight:500">${head}</span></div>${now}${hist}${empty}</section>`;
   }
   function vSetups(w) {
@@ -398,9 +399,9 @@
     if (!L || L.week !== w.id || !Array.isArray(L.setups)) return "";
     const rows = L.setups.slice().sort((a, b) => (b.entry - a.entry) || (b.ready - a.ready) || Math.abs(b.score) - Math.abs(a.score));
     const tag = (r) => r.entry && r.conv === false ? '<span class="tag warn">entry · low score</span>' : r.entry ? '<span class="tag up">ENTRY</span>' : r.ready ? '<span class="tag gold">ready</span>' : '<span class="tag">wait</span>';
-    const body = rows.length ? `<div class="tw"><table><thead><tr><th></th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>D1</th><th class="r">D1 pullback</th><th>H1</th><th class="r">H1 pullback</th><th class="r">SL beyond (H1)</th><th class="wrap">Status</th></tr></thead><tbody>${rows.map((r) => `<tr class="click" data-pair="${esc(r.pair)}"><td>${tag(r)}</td><td class="ccy">${esc(r.pair)}</td><td class="${r.bias === "BUY" ? "up" : "dn"} b">${r.bias}</td><td class="r b ${cls(r.score)}">${sg(r.score)}</td><td class="${r.d1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.d1Trend)}</td><td class="r">${isNum(r.d1Pct) && r.d1Pct ? f(r.d1Pct, 0) + "%" : "–"}</td><td class="${r.h1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.h1Trend)}</td><td class="r">${isNum(r.h1Pct) && r.h1Pct ? f(r.h1Pct, 0) + "%" : "–"}</td><td class="r mut">${isNum(r.h1Fail) ? r.h1Fail : "–"}</td><td class="wrap" style="white-space:normal">${esc(r.status)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No shortlisted pair or pair with live |score| ≥ 50 right now.</p>`;
+    const body = rows.length ? `<div class="tw"><table><thead><tr><th></th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>D1</th><th class="r">D1 pullback</th><th>H1</th><th class="r">H1 pullback</th><th class="r">SL beyond (H1)</th><th class="wrap">Status</th></tr></thead><tbody>${rows.map((r) => `<tr class="click" data-pair="${esc(r.pair)}"><td>${tag(r)}</td><td class="ccy">${esc(r.pair)}</td><td class="${r.bias === "BUY" ? "up" : "dn"} b">${r.bias}</td><td class="r b ${cls(r.score)}">${sg(r.score)}</td><td class="${r.d1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.d1Trend)}</td><td class="r">${isNum(r.d1Pct) && r.d1Pct ? f(r.d1Pct, 0) + "%" : "–"}</td><td class="${r.h1Trend === (r.bias === "BUY" ? "UP" : "DOWN") ? "up" : "dn"}">${esc(r.h1Trend)}</td><td class="r">${isNum(r.h1Pct) && r.h1Pct ? f(r.h1Pct, 0) + "%" : "–"}</td><td class="r mut">${isNum(r.h1Fail) ? r.h1Fail : "–"}</td><td class="wrap" style="white-space:normal">${esc(r.status)}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No shortlisted pair or pair with live |score| ≥ 25 right now.</p>`;
     const n = rows.filter((r) => r.entry && r.conv !== false).length;
-    return `<div style="margin-top:16px">${card("Live setups", `Scanner · ${n} entry setup${n === 1 ? "" : "s"} · every H1 close · Dow Fib D1 + H1`, body, "Every shortlisted pair, plus any pair with a live |score| ≥ 50, runs the Sunday gate (bias = sign of the live score). A shortlisted pair at entry with |score| < 50 shows as low score and does not push: D1 Dow trend = bias, D1 pullback ≥ 50% (FULL) or 38.2–50% with H1 aligned (LOW). ENTRY = H1 pullback 50–100% with H1 aligned, or an H1 close beyond the H1 fail level. Check the chart before entering.")}</div>`;
+    return `<div style="margin-top:16px">${card("Live setups", `Scanner · ${n} entry setup${n === 1 ? "" : "s"} · every H1 close · Dow Fib D1 + H1`, body, "Every shortlisted pair, plus any pair with a live |score| ≥ 25, runs the Sunday gate (bias = sign of the live score). A shortlisted pair at entry with |score| < 25 shows as low score and does not push: D1 Dow trend = bias, D1 pullback ≥ 50% (FULL) or 38.2–50% with H1 aligned (LOW). ENTRY = H1 pullback 50–100% with H1 aligned, or an H1 close beyond the H1 fail level. Check the chart before entering.")}</div>`;
   }
   function stateTag(s) { if (!s || s === "n/a") return `<span class="mut">–</span>`; return `<span class="tag ${s === "CONFIRM" ? "up" : s === "OPPOSE" ? "dn" : ""}">${esc(s.toLowerCase())}</span>`; }
 
@@ -408,7 +409,7 @@
     const cs = (w.currencies || []).filter((c) => c.cotParts);
     if (!cs.length) return vCOT0(w);
     const pt = (v) => pill(v);
-    return card("COT score parts", "50% NC net weekly change (tier by % change: 2/10/25/50% → 25/50/75/100) · 25% COT RSI level, contrarian ((50 − avg 13/26/52) ÷ 50) · 25% NC net position rank",
+    return card("COT score parts", "50% NC net weekly change (tier by % change: 2/10/25/50% → 25/50/75/100) · 25% COT RSI level, contrarian ((50 − avg 13/26/52) ÷ 50; full ±100 on a reversal) · 25% NC net position rank",
       `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">NC net change</th><th class="c">Change (50%)</th><th class="c">RSI level (25%)</th><th class="c">Rank (25%)</th><th class="c">COT score</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="r ${cls(c.cotParts.changePct)}">${sg(c.cotParts.changePct, 1)}%</td><td class="c">${pt(c.cotParts.change)}</td><td class="c">${pt(c.cotParts.rsi)}</td><td class="c">${pt(c.cotParts.rank)}</td><td class="c b">${pt(c.cot)}</td></tr>`).join("")}</tbody></table></div>`) + `<div style="height:16px"></div>` + vCOT0(w);
   }
   function vCOT0(w) {

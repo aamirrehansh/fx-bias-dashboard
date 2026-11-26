@@ -482,7 +482,7 @@ def _rank(vals):
 def blend_cot(week):
     """Aamir 26-Nov (parts weighted by strength, like Fund):
     50% NC net weekly change: sign x tier of % change vs |previous net| (2/10/25/50% -> .25/.5/.75/1, under 2% = 0)
-    25% COT RSI level, contrarian (Sarmaaya playbook S3): (50 - avg of RSI 13/26/52) / 50
+    25% COT RSI level, contrarian (Sarmaaya playbook S3): (50 - avg of RSI 13/26/52) / 50; full -1/+1 on REVERSAL DOWN/UP
     25% COT ranking: NC net position ranked across the 8 currencies, -1..+1."""
     S = week["weights"].get("fundSet") or FUND_DEFAULT
     rk = _rank({c["ccy"]: (c.get("cotCurr") or 0) for c in week["currencies"]})
@@ -493,6 +493,11 @@ def blend_cot(week):
         chg = sgn(pct) * _tier(pct, S)
         rs = [c.get(k) for k in ("rsi13", "rsi26", "rsi52") if c.get(k) is not None]
         lvl = (50 - sum(rs) / len(rs)) / 50 if rs else 0.0
+        rev = str(c.get("cotReversal") or "").upper()
+        if "REVERSAL DOWN" in rev:   # Aamir 26-Nov: RSI part gets full contrarian score on a reversal
+            lvl = -1.0
+        elif "REVERSAL UP" in rev:
+            lvl = 1.0
         c["cotParts"] = {"change": round(chg, 4), "changePct": round(pct, 2), "rsi": round(lvl, 4), "rank": round(rk[c["ccy"]], 4)}
         out[c["ccy"]] = round(0.5 * chg + 0.25 * lvl + 0.25 * rk[c["ccy"]], 6) + 0.0
     return out
