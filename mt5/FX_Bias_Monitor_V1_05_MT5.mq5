@@ -886,7 +886,7 @@ void CheckPrices()
          if(h1With && gPairs[i].tier=="TRADE" && !gPairs[i].slSent && bid>0 && ((dir>0 && bid<gPairs[i].h1Fail) || (dir<0 && bid>gPairs[i].h1Fail)))
          {  // H1 with us: level = SL zone
             gPairs[i].slSent=true;
-            AddAlert("warn",gPairs[i].pair,StringFormat("%s %s: price %s crossed the H1 trend-fails / SL level %s.",gPairs[i].pair,gPairs[i].bias,DoubleToString(bid,dg),DoubleToString(gPairs[i].h1Fail,dg)));
+            AddAlert("warn",gPairs[i].pair,StringFormat("Planned %s %s: price %s crossed the H1 trend-fails / SL level %s.",gPairs[i].bias,gPairs[i].pair,DoubleToString(bid,dg),DoubleToString(gPairs[i].h1Fail,dg)));
          }
          if(!h1With && gPairs[i].h1Trend!="" && !gPairs[i].entrySent && h1c>0 && ((dir>0 && h1c>gPairs[i].h1Fail) || (dir<0 && h1c<gPairs[i].h1Fail)))
          {  // H1 against us: level = entry trigger (H1 close beyond it)

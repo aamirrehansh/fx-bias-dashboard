@@ -94,7 +94,7 @@
         else if (d >= 15) out.push({ lvl: "ok", pair: p.pair, text: `${p.pair}: score strengthened ${sg(p.planScore)} → ${sg(p.score)}.` });
       }
     });
-    if (state.live && state.live.week === w.id) (state.live.alerts || []).forEach((a) => out.push({ lvl: a.level || "warn", pair: a.pair, text: a.text, at: a.at }));
+    if (state.live && state.live.week === w.id) (state.live.alerts || []).forEach((a) => out.push({ lvl: a.level || "warn", pair: a.pair, text: String(a.text || "").replace(/^([A-Z]{6}) (BUY|SELL): price/, "Planned $2 $1: price"), at: a.at }));
     // newest first; timed (live EA) alerts above the untimed snapshot summary
     return out.map((a, i) => ({ a, i })).sort((x, y) => (y.a.at ? Date.parse(y.a.at) : -1) - (x.a.at ? Date.parse(x.a.at) : -1) || y.i - x.i).map((x) => x.a);
   }
@@ -274,11 +274,11 @@
     const hidden = short.length - shown.length;
     h += `<section class="card" style="margin-top:16px"><h2>This week's shortlist<small>${trades.length} trade${LS_ ? ` · ${shown.length - trades.length} watch ready` : ""} · tap a pair for levels</small></h2><p class="sub">Pips from last Friday's ECB fix to the latest price${state.live ? " (MT5 live)" : ""}.${hidden ? ` Trade pairs always shown; watch pairs only when the live gate is ready or at entry. <span class="click" data-go="pairs" style="color:var(--info);text-decoration:underline;cursor:pointer">${hidden} watch pair${hidden === 1 ? "" : "s"} still waiting · see Pairs</span>` : ""}</p><div class="plan">${shown.map((p) => {
       const r = pairResult(w, p);
-      const chg = isNum(p.score) && isNum(p.planScore) && p.score !== p.planScore ? ` <span class="${cls(Math.abs(p.score) - Math.abs(p.planScore))}">(${sg(p.score)})</span>` : "";
       return `<div class="pc" data-pair="${p.pair}"><div class="h"><span class="p">${p.pair}</span><span class="d ${p.planBias}">${p.planBias}</span><span class="spacer"></span>${tier(p.tier)}</div>
-        <div class="row"><span class="mut">Score</span><b class="${cls(p.planScore)}">${sg(p.planScore)}${chg}</b></div>
+        <div class="row"><span class="mut">Score at plan (Sunday)</span><b class="${cls(p.planScore * dirOf(p.planBias))}">${sg(p.planScore)}</b></div>
+        <div class="row"><span class="mut">Score now</span><b class="${cls((isNum(p.score) ? p.score : p.planScore) * dirOf(p.planBias))}">${sg(isNum(p.score) ? p.score : p.planScore)}</b></div>
         <div class="row"><span class="mut">Risk</span><b>${p.risk ? (p.risk * 100).toFixed(1) + "%" : "–"}</b></div>
-        <div class="row"><span class="mut">Week so far</span><b class="${r ? cls(r.pips) : "mut"}">${r ? sg(r.pips, 0) + " pips" : "–"}</b></div>
+        <div class="row"><span class="mut">${p.planBias === "SELL" ? "Sell" : "Buy"} result this week</span><b class="${r ? cls(r.pips) : "mut"}">${r ? sg(r.pips, 0) + " pips" : "–"}</b></div>
         ${r && r.path.length > 1 ? `<div style="margin-top:6px">${spark(r.path.map((x) => x.v), 260, 26)}</div>` : ""}
         <div class="meta">${liveGate(w, p)}${p.timing && p.timing !== "-" ? `<div class="mut" style="font-size:11px">${esc(p.timing)}</div>` : ""}</div></div>`;
     }).join("") || `<div class="empty">No shortlisted pairs this week.</div>`}</div></section>`;
@@ -459,7 +459,7 @@
     else if (fl !== "all") ps = ps.filter((p) => p.tier === fl);
     const segs = [["short", "Shortlist"], ["TRADE", "Trade"], ["WATCH", "Watch"], ["all", "All 28"]];
     const body = `<div class="toolbar"><div class="seg">${segs.map(([k, l]) => `<button data-pf="${k}" class="${fl === k ? "on" : ""}">${l}</button>`).join("")}</div></div>
-      <div class="tw"><table><thead><tr><th>#</th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>Strength</th><th class="r">Now</th><th>Elig.</th><th>Gate (Dow Fib D1+H1)</th><th>Status</th><th class="r">Week pips</th></tr></thead><tbody>${ps.map((p) => {
+      <div class="tw"><table><thead><tr><th>#</th><th>Pair</th><th>Bias</th><th class="r">Score</th><th>Strength</th><th class="r">Now</th><th>Elig.</th><th>Gate (Dow Fib D1+H1)</th><th>Status</th><th class="r">Result (pips, plan side)</th></tr></thead><tbody>${ps.map((p) => {
         const r = pairResult(w, p);
         const moved = isNum(p.score) && p.score !== p.planScore;
         return `<tr class="click" data-pair="${p.pair}"><td class="mut">${p.rank}</td><td class="b">${p.pair}</td><td>${biasTxt(p.planBias)}</td><td class="r b ${cls(p.planScore)}">${sg(p.planScore)}</td><td>${bar(p.planScore, 80)}</td><td class="r ${moved ? cls(p.score) : "mut"}">${moved ? sg(p.score) : "="}</td><td>${esc(p.elig || "")}</td><td class="wrap" style="white-space:normal;max-width:320px">${liveGate(w, p)}</td><td>${tier(p.tier)}</td><td class="r ${r ? cls(r.pips) : "mut"}">${r ? sg(r.pips, 0) : "–"}</td></tr>`;
