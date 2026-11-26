@@ -324,10 +324,26 @@
       h += vCOT(w);
     } else if (state.factor === "seas") {
       h += card("Seasonality", "Sarmaaya Seasonality Score 1 and 2 (−10…+10)", `<div class="tw"><table><thead><tr><th>CCY</th><th class="r">Score 1</th><th class="r">Score 2</th><th class="c">Model score</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="r ${cls(c.seas1)}">${sg(c.seas1, 0)}</td><td class="r ${cls(c.seas2)}">${sg(c.seas2, 0)}</td><td class="c">${pill(c.seas)}</td></tr>`).join("")}</tbody></table></div>`);
+    } else if (w.macroPulse && w.macroPulse.rows) {
+      h += vMacroPulse(w, cs);
     } else {
       h += card("Macro overlay", esc((w.sources && w.sources.macro) || "Your weekly macro commentary, −2…+2"), `<div class="tw"><table><thead><tr><th>CCY</th><th class="c">Score</th><th>Rationale</th></tr></thead><tbody>${cs.map((c) => `<tr><td class="ccy">${c.ccy}</td><td class="c">${pill(c.macroRaw, 50)}</td><td class="wrap" style="white-space:normal">${esc(c.macroWhy || "")}</td></tr>`).join("")}</tbody></table></div>`);
     }
     return h;
+  }
+  function vMacroPulse(w, cs) {
+    const M = w.macroPulse, start = new Date(w.id + "T00:00:00Z");
+    const dn = [0, 1, 2, 3, 4].map((i) => new Date(start.getTime() + i * 864e5).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", timeZone: "UTC" }));
+    const dcell = (v) => (v > 0 ? `<span class="tag up">+${v}</span>` : v < 0 ? `<span class="tag dn">−${-v}</span>` : '<span class="mut">·</span>');
+    const rows = cs.map((c) => [c, M.rows.find((r) => r.ccy === c.ccy)]).filter((x) => x[1]);
+    const asof = M.at ? `Updated ${new Date(M.at).toLocaleString("en-GB", { timeZone: "Asia/Karachi", weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} PKT` : "Sunday scores only";
+    const tbl = `<div class="tw"><table><thead><tr class="grp"><th></th><th>Sunday</th><th colspan="5">BabyPips daily pulse</th><th colspan="2">Now</th><th></th></tr>
+      <tr><th>CCY</th><th class="c">Score</th>${dn.map((d) => `<th class="c">${d}</th>`).join("")}<th class="c">Score</th><th class="c">Model</th><th>Sunday rationale</th></tr></thead>
+      <tbody>${rows.map(([c, r]) => `<tr><td class="ccy">${c.ccy}</td><td class="c">${pill(r.sunday, 50)}</td>${r.days.map((v) => `<td class="c">${dcell(v)}</td>`).join("")}<td class="c b">${r.adjRaw !== r.sunday ? `${pill(r.adjRaw, 50)}` : pill(r.adjRaw, 50)}</td><td class="c">${isNum(r.macroPlan) && Math.abs(r.macro - r.macroPlan) > 1e-9 ? `${pill(r.macroPlan)} → ${pill(r.macro)}` : pill(r.macro)}</td><td class="wrap" style="white-space:normal">${esc(c.macroWhy || "")}</td></tr>`).join("")}</tbody></table></div>`;
+    const ent = (M.entries || []).slice().sort((a, b) => String(b.utc).localeCompare(String(a.utc)));
+    const et = ent.length ? `<div class="tw"><table><thead><tr><th>Posted (PKT)</th><th>Source</th><th>Counted</th><th>Drivers</th></tr></thead><tbody>${ent.map((e) => `<tr><td class="mut">${new Date(e.utc).toLocaleString("en-GB", { timeZone: "Asia/Karachi", weekday: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</td><td><a href="${esc(e.url)}" target="_blank" rel="noopener">${e.kind === "recap" ? "Daily recap" : "News"}</a></td><td>${Object.entries(e.score || {}).map(([k, v]) => `<span class="tag ${v > 0 ? "up" : "dn"}">${k} ${v > 0 ? "+" : "−"}${Math.abs(v)}</span>`).join(" ") || '<span class="mut">none</span>'}</td><td class="wrap" style="white-space:normal">${esc(e.drivers || "")}</td></tr>`).join("")}</tbody></table></div>` : `<p class="mut">No BabyPips updates yet this week.</p>`;
+    return card("Macro overlay + BabyPips pulse", asof, tbl, `Sunday score = your macro commentary (−2…+2). Each free BabyPips daily recap adds +1 for the two strongest and −1 for the two weakest currencies of the day (move vs USD from its scoreboard, minus the 8-currency average, at least ${M.noise}%), and BabyPips news adds ±1 for a clear policy shift. Score now = Sunday + ${M.step} × pulse, kept within −2…+2. Model = score ÷ 2, and it flows into strength, pair scores and the MT5 monitor.`)
+      + card("BabyPips updates counted", "Free articles only · checked about 4 AM and 6 PM PKT", et);
   }
   function pulseData(w) {
     const L = state.live;

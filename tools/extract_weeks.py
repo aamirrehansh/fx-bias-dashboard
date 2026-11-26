@@ -28,7 +28,8 @@ WEEKS = [
       "actuals": [("2026-11-25T13:40:00Z", "data/2026-11-25/actuals_ff.csv", "Forex Factory actuals incl. US 18:30 PKT releases (Core PCE, GDP, claims, durables, income/spending).")],
       "tracked": "data/pulse/tracked_2026-11-22.csv",
       "pulse": [("2026-11-25T15:10:00Z", "data/pulse/ff_2026-11-23.csv", "Investogenie Pulse: Conditional +/- updated from Forex Factory releases Mon-Wed (actual vs previous, tracked events); news actuals as of 18:30 PKT.",
-                 "data/2026-11-25/actuals_ff.csv")]}),
+                 "data/2026-11-25/actuals_ff.csv")],
+      "macro": ("data/pulse/babypips_2026-11-23.csv", "data/pulse/babypips_notes_2026-11-23.csv")}),
 ]
 
 
@@ -426,6 +427,82 @@ def compute_pulse(week, ff_csv, tracked, asof=None):
     return {"rows": rows, "events": evs}
 
 
+MACRO_STEP = 0.5     # each daily +1/-1 moves the -2..+2 Macro score by this much
+MACRO_NOISE = 0.15   # % move vs the 8-currency average needed to count
+
+
+def compute_macro_pulse(week, recap_csv, notes_csv):
+    """Macro pulse from the free BabyPips daily recap (and policy notes from later BabyPips news).
+    Each recap: every currency's day move vs USD from the scoreboard, minus the 8-currency average.
+    Top 2 = +1, bottom 2 = -1 (only if beyond MACRO_NOISE). Notes rows add their own +/-1.
+    Adjusted Macro = clamp(Sunday score + MACRO_STEP x sum, -2, +2); model factor = adjusted / 2."""
+    import csv
+    inv = {"USDJPY": "JPY", "USDCHF": "CHF", "USDCAD": "CAD"}
+    days = {c["ccy"]: [0] * 5 for c in week["currencies"]}
+    entries, last = [], None
+    for r in csv.DictReader(open(recap_csv), delimiter="|"):
+        mv = {"USD": 0.0}
+        for k in ("EURUSD", "GBPUSD", "AUDUSD", "NZDUSD", "USDJPY", "USDCHF", "USDCAD"):
+            v = float(r[k])
+            if k in inv:
+                mv[inv[k]] = -v
+            else:
+                mv[k[:3]] = v
+        avg = sum(mv.values()) / len(mv)
+        rel = {c: round(v - avg, 3) for c, v in mv.items()}
+        order = sorted(rel, key=lambda c: -rel[c])
+        d = int(r["day"])
+        sc = {}
+        for c in order[:2]:
+            if rel[c] >= MACRO_NOISE:
+                sc[c] = 1
+        for c in order[-2:]:
+            if rel[c] <= -MACRO_NOISE:
+                sc[c] = -1
+        for c, v in sc.items():
+            days[c][d] += v
+        entries.append({"utc": r["utc"] + ":00Z", "day": d, "kind": "recap", "url": r["url"], "rel": rel, "score": sc, "drivers": r["drivers"]})
+        last = r["utc"] + ":00Z"
+    if notes_csv and os.path.exists(os.path.join(ROOT, notes_csv)):
+        start = dt.datetime.fromisoformat(week["id"]) - dt.timedelta(hours=5)
+        for r in csv.DictReader(open(os.path.join(ROOT, notes_csv)), delimiter="|"):
+            t = dt.datetime.fromisoformat(r["utc"])
+            d = min(4, max(0, (t - start).days))
+            v = int(r["delta"])
+            days[r["ccy"]][d] += v
+            entries.append({"utc": r["utc"] + ":00Z", "day": d, "kind": "news", "url": r["url"], "score": {r["ccy"]: v}, "drivers": r["note"]})
+            last = max(last or "", r["utc"] + ":00Z")
+    rows = []
+    for c in week["currencies"]:
+        base = c.get("macroRaw") or 0
+        net = sum(days[c["ccy"]])
+        adj = max(-2.0, min(2.0, base + MACRO_STEP * net))
+        rows.append({"ccy": c["ccy"], "sunday": base, "days": days[c["ccy"]], "net": net, "adjRaw": adj, "macroPlan": c["macro"], "macro": adj / 2})
+    return {"at": last, "rows": rows, "entries": entries, "step": MACRO_STEP, "noise": MACRO_NOISE}
+
+
+def rescore_macro(week, prev, mp, note):
+    """New snapshot = latest snapshot's Fund/COT/Seas/News with the macro pulse's Macro factor."""
+    wt = week["weights"]
+    mm = {r["ccy"]: r["macro"] for r in mp["rows"]}
+    src = {c["ccy"]: c for c in (prev["currencies"] if prev else week["currencies"])}
+    cur = []
+    for c0 in week["currencies"]:
+        c = dict(src.get(c0["ccy"], c0))
+        c["macro"] = mm[c0["ccy"]]
+        st = 100 * (wt["fund"] * c["fund"] + wt["cot"] * c["cot"] + wt["seas"] * c["seas"] + wt["news"] * c["news"] + wt["macro"] * c["macro"])
+        cur.append({"ccy": c0["ccy"], "fund": c["fund"], "cot": c["cot"], "seas": c["seas"], "news": c["news"], "macro": c["macro"], "strength": round(st, 6)})
+    for i, c in enumerate(sorted(cur, key=lambda x: -x["strength"])):
+        c["rank"] = i + 1
+    smap = {c["ccy"]: c["strength"] for c in cur}
+    pairs = [{"pair": p["pair"], "score": round(smap[p["pair"][:3]] - smap[p["pair"][3:]], 6),
+              "bias": "BUY" if smap[p["pair"][:3]] - smap[p["pair"][3:]] >= 0 else "SELL"} for p in week["pairs"]]
+    out = {"at": mp["at"], "note": note, "currencies": cur, "pairs": pairs, "macroPulse": True}
+    if prev and prev.get("news"):
+        out["news"] = prev["news"]
+    return out
+
+
 def monday_to_friday(mid):
     d = dt.date.fromisoformat(mid)
     return (d + dt.timedelta(days=4)).isoformat()
@@ -439,8 +516,9 @@ def write_plan(weeks, path):
     L = ["WEEK,%s,%s,%s" % (w["id"], w["end"], clean(w["label"]))]
     wt = w["weights"]
     L.append("W,%s,%s,%s,%s,%s,%s" % (tuple(n(wt[k]) for k in ("fund", "cot", "seas", "news", "macro")) + (n(wt.get("newsMinW", 2)),)))
+    mpm = {r["ccy"]: r["macro"] for r in (w.get("macroPulse") or {}).get("rows", [])}  # macro pulse replaces Sunday Macro
     for c in w["currencies"]:
-        L.append("C,%s,%s,%s,%s,%s,%s,%s" % (c["ccy"], n(c["fund"]), n(c["cot"]), n(c["seas"]), n(c["news"]), n(c["macro"]), n(c["strength"])))
+        L.append("C,%s,%s,%s,%s,%s,%s,%s" % (c["ccy"], n(c["fund"]), n(c["cot"]), n(c["seas"]), n(c["news"]), n(mpm.get(c["ccy"], c["macro"])), n(c["strength"])))
     fs = wt.get("fundSet") or FUND_DEFAULT
     L.append("FS," + ",".join(n(fs[k]) for k in FUND_KEYS))
     for c in w["currencies"]:
@@ -501,6 +579,14 @@ def main(out):
             upd = rescore_from_actuals(base, os.path.join(PF, actp), ts, note, {r["ccy"]: r["fund"] for r in pu["rows"]})
             upd["pulse"] = True
             ups.append(upd)
+        if extra.get("macro"):
+            mp = compute_macro_pulse(base, os.path.join(ROOT, extra["macro"][0]), extra["macro"][1])
+            base["macroPulse"] = mp
+            if mp["at"]:
+                prev = sorted(ups, key=lambda u: u["at"])[-1] if ups else None
+                if prev and prev["at"] > mp["at"]:
+                    mp["at"] = prev["at"]  # keep it the newest snapshot
+                ups.append(rescore_macro(base, prev, mp, "Macro pulse from BabyPips daily recap (%s)." % mp["at"][:10]))
         base["updates"] = ups
         weeks.append(base)
     write_plan(weeks, os.path.join(os.path.dirname(out), "plan.csv"))
