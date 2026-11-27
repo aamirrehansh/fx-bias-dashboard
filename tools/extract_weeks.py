@@ -559,6 +559,8 @@ def apply_new_weights(week, weights=None):
     for p in week["pairs"]:
         p.setdefault("scoreOld", p["score"])
         p["score"] = round(smap[p["pair"][:3]] - smap[p["pair"][3:]], 6)
+        p.setdefault("biasOld", p["bias"])
+        p["bias"] = "BUY" if p["score"] >= 0 else "SELL"   # label follows the re-weighted score
     for u in week.get("updates", []):
         for c in u["currencies"]:
             c["fund"] = rf[c["ccy"]]
