@@ -65,7 +65,7 @@ input double DFBreakBuf     = 0.5;     // Dow Fib: break buffer x ATR
 input string CheckAsOfUTC   = "2026.11.21 19:50";   // one-off check vs Sunday TradingView read (blank = off)
 input bool   WeeklyD1Export = true;    // 1.08: every Saturday export the last D1ExportDays daily bars (28 pairs + XAUUSD + USTEC) to Common\Files\FXDaily\recent
 input int    D1ExportDays   = 21;      // calendar days per weekly export (only new days are appended to the 10y history)
-input double MaxH1PullbackPct = 78.6;  // 1.08 (Aamir 27-Nov): no ENTRY when H1 pullback is beyond this % (price too close to the H1 SL level)
+input double MaxH1PullbackPct = 61.8;  // 1.08 (Aamir 27-Nov: entry zone 50-61.8%): no ENTRY when H1 pullback is beyond this % (price too close to the H1 SL level)
 
 //--- model data
 string   CCY[8] = {"USD","EUR","GBP","JPY","CHF","CAD","AUD","NZD"};
