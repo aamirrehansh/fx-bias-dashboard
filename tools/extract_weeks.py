@@ -544,6 +544,19 @@ def apply_new_weights(week, weights=None):
     rc = blend_cot(week)
     wt["cotCalc"] = wt["macroCalc"] = "blend"
     mb = {}
+    # Seasonality slot = MT5 Stretch score (Aamir 26/27-Nov; applied mid-week to 23-27 Nov), from data/insights.js
+    ss = None
+    try:
+        ins = json.loads(open(os.path.join(ROOT, "data", "insights.js")).read().split("=", 1)[1].rstrip().rstrip(";"))
+        if ins.get("appliesMonday") == week["id"]:
+            ss = {r["ccy"]: (r.get("score") or 0) / 100 for r in ins["stretch"]}
+            wt["seasCalc"] = "stretch"
+    except Exception:
+        pass
+    def _seas(c):
+        if ss is not None:
+            c.setdefault("seasSarmaaya", c["seas"])
+            c["seas"] = ss.get(c["ccy"], 0)
     for c in week["currencies"]:
         c.setdefault("fundScored", c["fund"])
         c.setdefault("cotScored", c["cot"])
@@ -552,6 +565,7 @@ def apply_new_weights(week, weights=None):
         c["fund"] = rf[c["ccy"]]
         c["cot"] = rc[c["ccy"]]
         c["macro"] = mb[c["ccy"]] = 0.25 * (c.get("macroRaw") or 0)  # 50% part: Sunday score / 2; pulse part 0 until BabyPips
+        _seas(c)
         c["strength"] = _strength(wt, c)
     for i, c in enumerate(sorted(week["currencies"], key=lambda x: -x["strength"])):
         c["rank"] = i + 1
@@ -566,6 +580,7 @@ def apply_new_weights(week, weights=None):
             c["fund"] = rf[c["ccy"]]
             c["cot"] = rc[c["ccy"]]
             c["macro"] = mb[c["ccy"]]
+            _seas(c)
             c["strength"] = _strength(wt, c)
         for i, c in enumerate(sorted(u["currencies"], key=lambda x: -x["strength"])):
             c["rank"] = i + 1
