@@ -415,7 +415,20 @@
     const entries = (Array.isArray(L.setups) ? L.setups : []).filter((r) => r.entry && r.conv !== false);
     const t = (a) => a.at ? `<time>${new Date(a.at).toLocaleString([], { weekday: "short", hour: "2-digit", minute: "2-digit" })}</time>` : "";
     const now = entries.map((r) => `<div class="kb-row up click" data-pair="${esc(r.pair)}"><span class="kb-ic">🎯</span><div style="flex:1"><b>${esc(r.pair)} ${r.bias}</b> <span class="mut">score ${sg(r.score)}</span><br><span>${esc(r.status)}</span>${isNum(r.h1Fail) ? ` <span class="mut">· SL beyond ${r.h1Fail}</span>` : ""}</div><span class="tag up">ENTRY NOW</span></div>`).join("");
-    const hist = keyAl.map((a) => `<div class="kb-row ${/BIAS FLIPPED/.test(a.text) ? "dn" : "up"}"><span class="kb-ic">${/BIAS FLIPPED/.test(a.text) ? "🔄" : "🔔"}</span><div style="flex:1">${esc(a.text)}</div>${t(a)}</div>`).join("");
+    // NEW SETUP alerts expire once price leaves the entry bracket (H1 pullback 50-61.8%) or crosses the SL level (Aamir 27-Nov)
+    const setupState = (a) => {
+      const m = /NEW SETUP ([A-Z]{6}) (BUY|SELL)/.exec(a.text); if (!m) return null;
+      const pair = m[1], side = m[2], slm = /SL beyond H1 ([0-9.]+)/.exec(a.text), sl = slm ? parseFloat(slm[1]) : null;
+      const px = L.prices && isNum(L.prices[pair]) ? L.prices[pair] : null;
+      if (isNum(sl) && isNum(px) && (side === "SELL" ? px >= sl : px <= sl)) return { exp: true, why: `price ${px} crossed the SL level ${sl}` };
+      const sNow = (Array.isArray(L.setups) ? L.setups : []).find((r) => r.pair === pair);
+      if (!sNow) return { exp: true, why: "no longer on the scan (score below threshold)" };
+      if (sNow.bias !== side) return { exp: true, why: `bias now ${sNow.bias}` };
+      if (isNum(sNow.h1Pct) && (sNow.h1Pct < 50 || sNow.h1Pct > 61.8)) return { exp: true, why: `H1 pullback now ${Math.round(sNow.h1Pct)}%, outside 50–61.8%` };
+      if (!sNow.entry) return { exp: true, why: sNow.status || "entry conditions no longer met" };
+      return { exp: false };
+    };
+    const hist = keyAl.map((a) => { const st = setupState(a), flip = /BIAS FLIPPED/.test(a.text); return `<div class="kb-row ${flip ? "dn" : st && st.exp ? "exp" : "up"}"><span class="kb-ic">${flip ? "🔄" : st && st.exp ? "⌛" : "🔔"}</span><div style="flex:1">${esc(a.text)}${st && st.exp ? `<div class="mut" style="font-size:12px;margin-top:3px">Expired: ${esc(st.why)}</div>` : ""}</div>${st ? `<span class="tag ${st.exp ? "" : "up"}">${st.exp ? "EXPIRED" : "ACTIVE"}</span>` : ""}${t(a)}</div>`; }).join("");
     const n = entries.length;
     const head = n ? `${n} entry setup${n === 1 ? "" : "s"} ready now` : "No entry setup right now";
     const empty = !now && !hist ? `<div class="mut" style="font-size:13px">The scanner checks every shortlisted pair, plus any pair with a live |score| ≥ 25, at each H1 close. New setups and bias flips will appear here first${L.at ? " · last update " + new Date(L.at).toLocaleTimeString() : ""}.</div>` : "";
