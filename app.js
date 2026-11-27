@@ -255,7 +255,8 @@
     const trades = short.filter((p) => p.tier === "TRADE");
     const risk = trades.reduce((t, p) => t + (p.risk || 0), 0);
     const perf = weekPerf(w);
-    const al = alertsFor(w);
+    // same alert text shown once (earliest kept): the monitor can resend after a restart
+    const al = ((xs) => { const seen = new Map(); xs.forEach((a) => { const k = a.text, o = seen.get(k); if (!o || (a.at && o.at && a.at < o.at)) seen.set(k, a); }); return xs.filter((a) => seen.get(a.text) === a); })(alertsFor(w));
     let h = `<div class="grid g4">
       <div class="kpi"><div class="l">Week</div><div class="v">${esc(w.label)}</div><div class="s">${s.at ? (s.live ? "Live MT5 data " : "Updated ") + new Date(s.at).toLocaleString() : "Sunday plan"}</div></div>
       <div class="kpi"><div class="l">Trades / risk</div><div class="v">${trades.length} <span class="mut" style="font-size:15px">· ${(risk * 100).toFixed(1)}%</span></div><div class="s">${short.filter((p) => p.tier === "WATCH").length} watch · ${short.filter((p) => p.tier === "RESERVE").length} reserve</div></div>
