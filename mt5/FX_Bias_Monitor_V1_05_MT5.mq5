@@ -65,6 +65,7 @@ input double DFBreakBuf     = 0.5;     // Dow Fib: break buffer x ATR
 input string CheckAsOfUTC   = "2026.11.21 19:50";   // one-off check vs Sunday TradingView read (blank = off)
 input bool   WeeklyD1Export = true;    // 1.08: every Saturday export the last D1ExportDays daily bars (28 pairs + XAUUSD + USTEC) to Common\Files\FXDaily\recent
 input int    D1ExportDays   = 21;      // calendar days per weekly export (only new days are appended to the 10y history)
+input double MaxH1PullbackPct = 78.6;  // 1.08 (Aamir 27-Nov): no ENTRY when H1 pullback is beyond this % (price too close to the H1 SL level)
 
 //--- model data
 string   CCY[8] = {"USD","EUR","GBP","JPY","CHF","CAD","AUD","NZD"};
@@ -736,7 +737,8 @@ bool EvalPair(const string sym,const string pair,const double score,SetupRow &r,
    string bandTxt=(r.band>=1 ? "FULL" : "LOW");
    if(h1ok)
    {
-      if(r.h1Pct>=50 && r.h1Pct<=100){ r.entry=true; r.status=StringFormat("ENTRY: H1 pullback %.0f%%, D1 pullback %.0f%% %s",r.h1Pct,pct,bandTxt); }
+      if(r.h1Pct>MaxH1PullbackPct && r.h1Pct<=100) r.status=StringFormat("D1 %s ok, H1 pullback %.0f%% late (>%.1f%%, too close to SL), no entry",bandTxt,r.h1Pct,MaxH1PullbackPct);
+      else if(r.h1Pct>=50 && r.h1Pct<=100){ r.entry=true; r.status=StringFormat("ENTRY: H1 pullback %.0f%%, D1 pullback %.0f%% %s",r.h1Pct,pct,bandTxt); }
       else if(r.h1Pct>100) r.status=StringFormat("D1 %s ok, H1 pending %.0f%% (>100%%, check)",bandTxt,r.h1Pct);
       else r.status=StringFormat("D1 %s ok, wait H1 pullback >=50%%",bandTxt);
    }
