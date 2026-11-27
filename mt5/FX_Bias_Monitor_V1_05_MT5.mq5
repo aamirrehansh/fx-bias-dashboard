@@ -310,6 +310,7 @@ bool ParsePlan(const string txt)
          p.d1Trend=(k>=9 ? f[8] : ""); p.h1Trend=(k>=10 ? f[9] : "");
          p.score=p.planScore; p.lastState=""; p.invalidSent=false; p.slSent=false; p.turnSent=false; p.entrySent=false;
          p.sym=ResolveSymbol(p.pair);
+         if(GlobalVariableCheck(GvName(p.pair,"st"))) p.lastState=StFromCode((int)GlobalVariableGet(GvName(p.pair,"st")));
          int m=ArraySize(gPairs); ArrayResize(gPairs,m+1); gPairs[m]=p;
       }
    }
@@ -773,6 +774,8 @@ void ScanAll(const bool force)
       r.since=TimeGMT();
       bool was=false;
       for(int k=0;k<ArraySize(prev);k++) if(prev[k].pair==r.pair && prev[k].want==r.want){ if(prev[k].entry && r.entry) r.since=prev[k].since; was=prev[k].entry; if(!r.entry && prev[k].ready==r.ready && prev[k].status==r.status) r.since=prev[k].since; break; }
+      if(!was && r.entry && GlobalVariableCheck(GvName(r.pair,"e"+r.want))) was=true;   // already alerted before a restart
+      if(r.entry) GlobalVariableSet(GvName(r.pair,"e"+r.want),1); else if(GlobalVariableCheck(GvName(r.pair,"e"+r.want))) GlobalVariableDel(GvName(r.pair,"e"+r.want));
       int m=ArraySize(gSetups); ArrayResize(gSetups,m+1); gSetups[m]=r;
       if(r.entry && r.conv) nEntry++;
       if(r.entry && !was && !r.conv)
@@ -883,6 +886,12 @@ void AddAlert(const string level,const string pair,const string text)
    gDirty=true; gLastPublish=0;   // publish now
 }
 
+
+// 1.08: alert de-dup survives restarts/recompiles (terminal global variables, per plan week)
+string GvName(const string pair,const string k){ return "FXBM_"+gWeekId+"_"+pair+"_"+k; }
+int    StCode(const string st){ return st=="OK"?1:st=="FLIP"?2:st=="BELOW"?3:st=="WEAK"?4:0; }
+string StFromCode(const int c){ return c==1?"OK":c==2?"FLIP":c==3?"BELOW":c==4?"WEAK":""; }
+
 void CheckAlerts()
 {
    for(int i=0;i<ArraySize(gPairs);i++)
@@ -900,6 +909,7 @@ void CheckAlerts()
       if(st=="WEAK")  AddAlert("warn",gPairs[i].pair,StringFormat("%s %s %s: score weakened %+.1f -> %+.1f.",gPairs[i].tier,gPairs[i].pair,planDir,ps,s));
       if(st=="OK" && gPairs[i].lastState!="") AddAlert("ok",gPairs[i].pair,StringFormat("%s %s %s: score back to normal (%+.1f).",gPairs[i].tier,gPairs[i].pair,planDir,s));
       gPairs[i].lastState=st;
+      GlobalVariableSet(GvName(gPairs[i].pair,"st"),StCode(st));
    }
 }
 
