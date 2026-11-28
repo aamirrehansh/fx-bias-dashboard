@@ -31,12 +31,13 @@
   };
   // merge the bundled price seed (works offline on first open) with anything fetched later
   if (window.FXRATES && window.FXRATES.data) state.rates.data = Object.assign({}, window.FXRATES.data, state.rates.data || {});
-  if (!WEEKS.find((w) => w.id === state.wk)) state.wk = currentWeekId();
+  // open on the current week; an older saved pick doesn't survive a new week being published
+  if (!WEEKS.find((w) => w.id === state.wk) || state.wk < currentWeekId()) state.wk = currentWeekId();
 
   function currentWeekId() {
     const t = today();
     let pick = WEEKS[WEEKS.length - 1];
-    for (const w of WEEKS) if (w.start <= t && !w.missing) pick = w;
+    for (const w of WEEKS) if (addDays(w.start, -2) <= t && !w.missing) pick = w;  // new plan is current from the Saturday before
     return pick ? pick.id : null;
   }
   const week = () => WEEKS.find((w) => w.id === state.wk);
