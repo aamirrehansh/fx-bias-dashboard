@@ -1,0 +1,226 @@
+ccy|event|pol|base3|latest|latest_value|site_threshold
+AUD|ANZ Job Advertisements m/m|G|0.018333|06-10|0.022|0.0103
+AUD|Building Approvals m/m|G|0.020667|02-11|0.051|-0.0203
+AUD|Cash Rate|G|0.046|03-11|0.0485|0.0298
+AUD|CB Leading Index m/m|G|0.001667|12-11|-0.003|0.0017
+AUD|Commodity Prices y/y|G|0.145|02-11|0.125|0.1547
+AUD|Company Operating Profits q/q|G|0.021|31-08|0.018|
+AUD|Construction Work Done q/q|G|0.007333|25-11|0.009|-0.007
+AUD|Current Account|G|-25133333333.333332|01-09|-27200000000|
+AUD|Employment Change|G|-14433.333333|19-11|-43500|-5200.0
+AUD|Flash Manufacturing PMI|G|49.233333|23-11|48.7|50.3333
+AUD|Flash Services PMI|G|48.466667|23-11|46.2|50.7
+AUD|GDP q/q|G|0.005|02-09|0.004|
+AUD|Import Prices q/q|G|0.015667|29-10|-0.011|0.019
+AUD|MI Inflation Expectations|G|0.051667|12-11|0.053|0.0503
+AUD|MI Inflation Gauge m/m|G|0.004333|02-11|0.005|0.0027
+AUD|NAB Business Confidence|G|-12|10-11|-15|-9.0
+AUD|PPI q/q|G|0.009333|30-10|0.011|0.0043
+AUD|Private Capital Expenditure q/q|G|0.050333|26-11|0.122|-0.012
+AUD|Private Sector Credit m/m|G|0.006|30-10|0.006|0.0067
+AUD|Unemployment Rate|L|0.047333|19-11|0.049|0.046
+AUD|Wage Price Index q/q|G|0.009|18-11|0.011|0.0027
+AUD|Westpac Consumer Sentiment|G|-0.042|10-11|-0.027|-0.013
+CAD|Building Permits m/m|G|-0.042|12-11|-0.041|0.0333
+CAD|Common CPI y/y|G|0.025|16-11|0.025|0.0257
+CAD|Core CPI m/m|G|0.002333|16-11|0.004|0.001
+CAD|Core Retail Sales m/m|G|0.005|20-11|0.01|0.0033
+CAD|Corporate Profits q/q|G|0.028667|23-11|0.019|0.029
+CAD|CPI m/m|G|0.000667|16-11|0.002|0.0017
+CAD|Current Account|G|2033333333.333333|27-11|4500000000|2933333333.3333
+CAD|Employment Change|G|-38233.333333|06-11|-4700|-11633.3333
+CAD|Foreign Securities Purchases|G|7600000000|17-11|19460000000|14723333333.3333
+CAD|GDP m/m|G|0.003667|30-10|0.003|0.002
+CAD|Housing Starts|G|241000|17-11|245000|235666.6667
+CAD|IPPI m/m|G|0.012|19-11|0.003|0.013
+CAD|Ivey PMI|G|60.266667|06-11|58.3|59.2
+CAD|Labor Productivity q/q|G|0.001333|03-09|0.01|
+CAD|Manufacturing PMI|G|51.366667|02-11|49.6|52.6667
+CAD|Manufacturing Sales m/m|G|0.004|13-11|0.015|0.004
+CAD|Median CPI y/y|G|0.019667|16-11|0.02|0.0197
+CAD|NHPI m/m|G|-0.001667|18-11|-0.002|-0.0013
+CAD|Overnight Rate|G|0.023333|28-10|0.025|0.015
+CAD|Retail Sales m/m|G|0.004333|20-11|0.008|0.0037
+CAD|RMPI m/m|G|0.023|19-11|-0.01|0.019
+CAD|Trade Balance|G|3466666666.666667|04-11|5400000000|2966666666.6667
+CAD|Trimmed CPI y/y|G|0.018333|16-11|0.018|0.0187
+CAD|Unemployment Rate|L|0.065333|06-11|0.067|0.0643
+CAD|Wholesale Sales m/m|G|-0.002|13-11|0.007|0.005
+CHF|CPI m/m|G|0.001667|03-11|0.002|0.001
+CHF|GDP q/q|G|0.009|03-09|0.019|
+CHF|KOF Economic Barometer|G|107.8|30-10|107.6|106.4333
+CHF|Manufacturing PMI|G|56.366667|02-11|56.7|55.2
+CHF|PPI m/m|G|0.006333|13-11|0.009|0.003
+CHF|Retail Sales y/y|G|0.023667|02-11|0.016|0.0183
+CHF|SECO Consumer Climate|G|-38|06-11|-45|-34.6667
+CHF|Unemployment Rate|L|0.031|05-11|0.031|0.031
+EUR|Consumer Confidence|G|-17.333333|20-11|-17|-17.0
+EUR|Core CPI Flash Estimate y/y|G|0.024667|04-11|0.025|0.0163
+EUR|CPI Flash Estimate y/y|G|0.037|04-11|0.04|0.0237
+EUR|Current Account|G|16266666666.666666|19-11|12500000000|23800000000.0
+EUR|Final Core CPI y/y|G|0.025|18-11|0.026|0.0247
+EUR|Final CPI y/y|G|0.036667|18-11|0.04|0.033
+EUR|Final Manufacturing PMI|G|52.766667|02-11|52.7|52.5
+EUR|Final Services PMI|G|52|04-11|51.4|52.1
+EUR|Flash Manufacturing PMI|G|52.666667|23-11|52.9|52.6333
+EUR|French Final CPI m/m|G|0.002667|13-11|0.004|0.0033
+EUR|French Final Manufacturing PMI|G|50.4|02-11|49.5|50.5
+EUR|French Final Services PMI|G|48.466667|04-11|46.2|49.6
+EUR|French Flash Manufacturing PMI|G|49.166667|23-11|47.9|50.3667
+EUR|French Industrial Production m/m|G|-0.004|05-11|-0.005|-0.002
+EUR|French Trade Balance|G|-6700000000|06-11|-7300000000|-6200000000.0
+EUR|German Factory Orders m/m|G|-0.012333|05-11|0.044|-0.0167
+EUR|German Final CPI m/m|G|0.002|11-11|-0.002|0.0053
+EUR|German Final Manufacturing PMI|G|54.133333|02-11|54.2|53.4667
+EUR|German Final Services PMI|G|51.7|04-11|52.5|50.8
+EUR|German GfK Consumer Climate|G|-30.533333|26-11|-30.2|-29.3333
+EUR|German ifo Business Climate|G|90.233333|24-11|90.6|89.6333
+EUR|German Import Prices m/m|G|0.011|30-10|0.021|0.0017
+EUR|German Industrial Production m/m|G|0.005333|06-11|0.007|0.0037
+EUR|German PPI m/m|G|0.014667|20-11|0.014|0.0137
+EUR|German Prelim CPI m/m|G|0.002|30-10|-0.002|0.0053
+EUR|German Retail Sales m/m|G|-0.006|02-11|-0.02|0.0007
+EUR|German Trade Balance|G|18800000000|09-11|15600000000|18733333333.3333
+EUR|German Unemployment Change|L|8333.333333|27-11|9000|6666.6667
+EUR|German WPI m/m|G|0.010667|13-11|0.004|0.01
+EUR|German ZEW Economic Sentiment|G|32.8|17-11|35.6|32.3333
+EUR|Italian Industrial Production m/m|G|0.002|11-11|0.012|-0.0053
+EUR|Italian Manufacturing PMI|G|49.8|02-11|49.4|50.4333
+EUR|Italian Monthly Unemployment Rate|L|0.059333|29-10|0.063|0.0383
+EUR|Italian Retail Sales m/m|G|0|05-11|0.001|-0.0007
+EUR|Italian Services PMI|G|52.966667|04-11|52|53.1333
+EUR|Italian Trade Balance|G|4030000000|13-11|2080000000|4746666666.6667
+EUR|Main Refinancing Rate|G|0.025667|29-10|0.0265|0.0168
+EUR|PPI m/m|G|0.02|05-11|0.025|0.0107
+EUR|Retail Sales m/m|G|-0.004|06-11|-0.007|-0.0027
+EUR|Sentix Investor Confidence|G|3.4|09-11|2.4|2.9
+EUR|Spanish Flash CPI y/y|G|0.046333|27-11|0.041|0.047
+EUR|Spanish Manufacturing PMI|G|50.9|02-11|52.2|50.2333
+EUR|Spanish Services PMI|G|57.766667|04-11|57.2|58.1333
+EUR|Spanish Unemployment Change|L|37033.333333|04-11|43100|29166.6667
+EUR|Spanish Unemployment Rate|L|0.103|27-10|0.102|0.033
+EUR|Unemployment Rate|L|0.064|30-10|0.065|0.0423
+EUR|ZEW Economic Sentiment|G|23.6|17-11|26.5|25.2333
+GBP|Average Earnings Index 3m/y|G|0.037333|17-11|0.036|0.039
+GBP|BRC Shop Price Index y/y|G|0.014667|27-10|0.021|0.0077
+GBP|CB Leading Index m/m|G|-0.001|13-11|-0.001|-0.002
+GBP|CBI Industrial Order Expectations|G|-17.666667|19-11|-12|-22.0
+GBP|CBI Realized Sales|G|-18.666667|24-11|9|-37.6667
+GBP|Claimant Count Change|L|30433.333333|17-11|33200|15700.0
+GBP|Construction PMI|G|44.666667|05-11|43.6|45.0333
+GBP|Consumer Inflation Expectations|G|0.034667|11-09|0.032|
+GBP|Core CPI y/y|G|0.027333|18-11|0.028|0.0267
+GBP|CPI y/y|G|0.034|18-11|0.036|0.0317
+GBP|Final GDP q/q|G|0.004|30-09|0.005|
+GBP|Final Manufacturing PMI|G|52.133333|02-11|52.8|51.8333
+GBP|Final Services PMI|G|52.466667|04-11|52.8|52.2333
+GBP|Flash Manufacturing PMI|G|52.5|23-11|52.7|52.1
+GBP|Flash Services PMI|G|52.266667|23-11|52|52.5333
+GBP|GDP m/m|G|0.002333|12-11|0.002|0.0027
+GBP|GfK Consumer Confidence|G|-19.666667|20-11|-22|-17.0
+GBP|Goods Trade Balance|G|-20433333333.333332|12-11|-22300000000|-20666666666.6667
+GBP|Halifax HPI m/m|G|-0.002333|05-06|-0.001|
+GBP|Index of Services 3m/3m|G|0.008|12-11|0.009|0.0067
+GBP|Industrial Production m/m|G|0.004333|12-11|0.003|0.0027
+GBP|M4 Money Supply m/m|G|0.004333|29-10|0.001|0.004
+GBP|Manufacturing Production m/m|G|0.009333|12-11|0.007|0.0053
+GBP|Mortgage Approvals|G|55333.333333|29-10|53000|37666.6667
+GBP|Nationwide HPI m/m|G|-0.001|30-10|0.002|0.001
+GBP|Net Lending to Individuals m/m|G|7400000000|29-10|5800000000|5466666666.6667
+GBP|Official Bank Rate|G|0.038333|05-11|0.04|0.0125
+GBP|PPI Input m/m|G|0.013333|18-11|0.022|0.0003
+GBP|PPI Output m/m|G|0.006333|18-11|0.004|0.0057
+GBP|Prelim GDP q/q|G|0.005667|12-11|0.007|0.0013
+GBP|Public Sector Net Borrowing|G|19933333333.333332|20-11|17000000000|14866666666.6667
+GBP|Retail Sales m/m|G|0.002667|20-11|0.007|-0.0013
+GBP|RICS House Price Balance|G|-0.32|12-11|-0.36|-0.3
+GBP|Rightmove HPI m/m|G|-0.000333|16-11|-0.018|-0.001
+GBP|RPI y/y|G|0.038333|18-11|0.042|0.035
+GBP|Unemployment Rate|L|0.047333|17-11|0.046|0.0483
+JPY|Average Cash Earnings y/y|G|0.043667|06-11|0.046|0.0397
+JPY|BOJ Core CPI y/y|G|0.021667|25-11|0.023|0.0193
+JPY|BOJ Policy Rate|G|0.011667|30-10|0.0125|0.0075
+JPY|BSI Manufacturing Index|G|3.2|11-09|7.6|
+JPY|Capital Spending q/y|G|0.036667|01-09|0.016|
+JPY|Consumer Confidence|G|35.133333|29-10|35|23.4667
+JPY|Economy Watchers Sentiment|G|46.5|10-11|46.1|46.3667
+JPY|Final GDP Price Index y/y|G|0.030667|08-09|0.026|
+JPY|Final GDP q/q|G|0.004|08-09|0.004|
+JPY|Final Manufacturing PMI|G|54.1|02-11|53.3|54.5
+JPY|Flash Manufacturing PMI|G|53.7|24-11|53.7|54.1667
+JPY|Household Spending y/y|G|-0.045|10-11|-0.068|-0.0333
+JPY|Housing Starts y/y|G|0.038667|30-10|-0.027|0.1097
+JPY|Monetary Base y/y|G|-0.148333|04-11|-0.136|-0.149
+JPY|National Core CPI y/y|G|0.02|20-11|0.022|0.0187
+JPY|PPI y/y|G|0.071667|12-11|0.071|0.072
+JPY|Prelim GDP q/q|G|0.003|16-11|0.003|0.001
+JPY|Prelim Industrial Production m/m|G|0.002|30-10|0.022|-0.001
+JPY|Prelim Machine Tool Orders y/y|G|0.558667|11-11|0.425|0.585
+JPY|Retail Sales y/y|G|0.03|30-10|0.023|0.024
+JPY|Revised Industrial Production m/m|G|-0.002|16-11|0.02|-0.0023
+JPY|SPPI y/y|G|0.038667|25-11|0.042|0.0367
+JPY|Tankan Manufacturing Index|G|21|01-10|24|7.3333
+JPY|Tankan Non-Manufacturing Index|G|36|01-10|35|12.3333
+JPY|Tokyo Core CPI y/y|G|0.024333|27-11|0.029|0.0147
+JPY|Trade Balance|G|-770000000000|18-11|-770000000000|-743333333333.3334
+JPY|Unemployment Rate|L|0.024333|30-10|0.024|0.0163
+NZD|ANZ Business Confidence|G|52.7|29-10|52.5|53.9
+NZD|ANZ Commodity Prices m/m|G|0.002667|04-11|0.006|-0.0123
+NZD|Building Consents m/m|G|-0.022|03-11|-0.079|-0.0077
+NZD|BusinessNZ Manufacturing Index|G|54.833333|13-11|54.9|54.6333
+NZD|BusinessNZ Services Index|G|51.266667|16-11|51.7|50.9
+NZD|Core Retail Sales q/q|G|0.010333|23-11|0.014|0.0023
+NZD|CPI q/q|G|0.010333|22-10|0.007|0.005
+NZD|Credit Card Spending y/y|G|0.051333|20-11|0.05|0.0523
+NZD|Current Account|G|-2886666666.666667|16-09|-1670000000|
+NZD|Employment Change q/q|G|0.002|04-11|-0.001|0.0017
+NZD|FPI m/m|G|0|17-11|-0.004|0.0013
+NZD|GDP q/q|G|0.004|17-09|0.002|
+NZD|Inflation Expectations q/q|G|0.0241|17-11|0.0236|0.0078
+NZD|Labor Cost Index q/q|G|0.005333|04-11|0.004|0.0023
+NZD|Manufacturing Sales q/q|G|0.021667|08-09|0.031|
+NZD|NZIER Business Confidence|G|15.666667|06-10|43|2.6667
+NZD|Official Cash Rate|G|0.026667|28-10|0.0275|0.0175
+NZD|PPI Input q/q|G|0.016667|18-11|0.007|0.0097
+NZD|PPI Output q/q|G|0.010667|18-11|0.008|0.0053
+NZD|Retail Sales q/q|G|0.008667|23-11|0.022|-0.0017
+NZD|Trade Balance|G|-2030666666.666667|19-11|-2772000000|-1756333333.3333
+NZD|Unemployment Rate|L|0.055333|04-11|0.057|0.0187
+NZD|Visitor Arrivals m/m|G|0.019667|12-11|0.026|0.0107
+NZD|Westpac Consumer Sentiment|G|88.2|16-09|89.5|
+USD|ADP Non-Farm Employment Change|G|73333.333333|04-11|86000|44666.6667
+USD|Average Hourly Earnings m/m|G|0.002667|06-11|0.004|0.0017
+USD|Building Permits|G|1363333.333333|18-11|1300000|1410000.0
+USD|CB Consumer Confidence|G|92.3|24-11|103.3|87.6667
+USD|Chicago PMI|G|53.733333|30-10|55.3|54.5
+USD|Core CPI m/m|G|0.003|10-11|0.003|0.0027
+USD|Core Durable Goods Orders m/m|G|0.004333|25-11|0.005|0.004
+USD|Core PCE Price Index m/m|G|0.002667|25-11|0.003|0.0023
+USD|Core PPI m/m|G|0.004|13-11|0.003|0.0037
+USD|Core Retail Sales m/m|G|0.009667|17-11|0.006|0.0067
+USD|CPI m/m|G|0.004667|10-11|0.004|0.0037
+USD|Durable Goods Orders m/m|G|0.010333|25-11|0.002|0.0097
+USD|Existing Home Sales|G|3906666.666667|12-11|3750000|4010000.0
+USD|Factory Orders m/m|G|0.009333|03-11|0.018|0.0023
+USD|Federal Funds Rate|G|0.039167|28-10|0.04|0.0258
+USD|Final GDP q/q|G|0.016|30-09|0.022|
+USD|Housing Starts|G|1270000|18-11|1310000|1246666.6667
+USD|Industrial Production m/m|G|0.001667|17-11|-0.004|0.003
+USD|ISM Manufacturing PMI|G|54.866667|02-11|55.5|54.9
+USD|ISM Services PMI|G|54.933333|04-11|54.5|54.8
+USD|NAHB Housing Market Index|G|28.666667|17-11|25|32.0
+USD|New Home Sales|G|687000|25-11|701000|655666.6667
+USD|NFIB Small Business Index|G|98.133333|10-11|97.8|98.8
+USD|Non-Farm Employment Change|G|118666.666667|06-11|165000|56000.0
+USD|Personal Income m/m|G|0.003667|25-11|0.007|0.0027
+USD|Personal Spending m/m|G|0.005667|25-11|0.003|0.0053
+USD|Philly Fed Manufacturing Index|G|21.666667|19-11|6.3|35.3667
+USD|PPI m/m|G|0.006667|13-11|0.003|0.0057
+USD|Prelim UoM Consumer Sentiment|G|48.366667|06-11|51|48.3667
+USD|Prelim UoM Inflation Expectations|G|0.045333|06-11|0.043|0.0453
+USD|Retail Sales m/m|G|0.007333|17-11|0.002|0.0047
+USD|Revised UoM Inflation Expectations|G|0.043333|20-11|0.037|0.0443
+USD|Richmond Manufacturing Index|G|-0.333333|24-11|3|0.0
+USD|Trade Balance|G|-99733333333.333328|04-11|-105000000000|-89166666666.6667
+USD|Unemployment Claims|L|193333.333333|25-11|189000|198000.0
+USD|Unemployment Rate|L|0.041333|06-11|0.041|0.0413

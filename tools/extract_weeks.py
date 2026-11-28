@@ -31,6 +31,10 @@ WEEKS = [
                  "data/2026-11-25/actuals_ff.csv")],
       "macro": ("data/pulse/babypips_2026-11-23.csv", "data/pulse/babypips_notes_2026-11-23.csv"),
       "reweight": True}),  # 26-Nov: Aamir applied reviewed weights 40/15/5/10/30 + raw Investogenie rank mid-week
+    ("2026-11-30", "30 Nov–4 Dec 2026", "Final_Weekly_Model_30Nov-4Dec_2026.xlsx", "final",
+     {"tracked": "data/pulse/tracked_2026-11-29.csv",
+      "macro": ("data/pulse/babypips_2026-11-30.csv", "data/pulse/babypips_notes_2026-11-30.csv"),
+      "reweight": True}),  # first Sunday build with 40/15/5/10/30 + Fund/COT/Macro blends in the workbook itself
 ]
 
 
