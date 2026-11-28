@@ -555,6 +555,10 @@ def apply_new_weights(week, weights=None):
         if ins.get("appliesMonday") == week["id"]:
             ss = {r["ccy"]: (r.get("score") or 0) / 100 for r in ins["stretch"]}
             wt["seasCalc"] = "stretch"
+            if ins.get("seasonal"):  # Aamir 29-Nov: 50% Stretch + 50% Sarmaaya-style (S1+S2)/20 from MT5 10y
+                sf = {r["ccy"]: r["factor"] for r in ins["seasonal"]}
+                ss = {k: round(0.5 * v + 0.5 * sf.get(k, 0), 6) for k, v in ss.items()}
+                wt["seasCalc"] = "stretch+seasonal"
     except Exception:
         pass
     def _seas(c):

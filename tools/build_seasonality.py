@@ -112,8 +112,26 @@ for f2 in sorted(glob.glob(os.path.join(D, "*_D1.csv"))):
 rng = pd.DataFrame(HL).T; rng.index.name = "Symbol"
 d0, d1 = wk_dates(lk); ny, nw = (pd.Timestamp.fromisocalendar(int(lk[:4]), int(lk[5:]), 1) + pd.Timedelta(days=7)).isocalendar()[:2]
 n0, n1 = wk_dates(f"{ny}-{nw:02d}")
+# ---- Sarmaaya-style seasonal score (Aamir 29-Nov-2026) for the coming ISO week ----
+# S1 consistency: avg % of years up across the four windows; >=65% +10, <=35% -10, else 0.
+# S2 direction: avg move up in >=3 of 4 windows +10, down in >=3 -10, else 0. Factor = (S1+S2)/20.
+def sarmaaya_style(w):
+    last = int(pd.Timestamp.now().year) - 1
+    win = dict(FOUR); win["All"] = (2016, last)
+    out = []
+    for c in CC:
+        avg, up = [], []
+        for k, (a, b) in win.items():
+            x = CR.loc[(wk == w) & (yr >= a) & (yr <= b), c]
+            avg.append(float(x.mean())); up.append(float((x > 0).mean() * 100))
+        pu = float(np.mean(up))
+        s1 = 10 if pu >= 65 else (-10 if pu <= 35 else 0)
+        nu, nd = sum(v > 0 for v in avg), sum(v < 0 for v in avg)
+        s2 = 10 if nu >= 3 else (-10 if nd >= 3 else 0)
+        out.append({"ccy": c, "pctUp": round(pu, 1), "pctUp10y": round(up[-1], 1), "avgAll": round(avg[-1], 3), "s1": s1, "s2": s2, "factor": (s1 + s2) / 20})
+    return out
 INS = {"built": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M"), "basedOn": f"{d0} - {d1}", "appliesTo": f"{n0} - {n1}", "appliesMonday": pd.Timestamp.fromisocalendar(int(ny), int(nw), 1).strftime("%Y-%m-%d"),
-       "stretch": [{"ccy": c, **{k: (None if pd.isna(v) else (v.item() if hasattr(v, "item") else v)) for k, v in stretch.loc[c].items()}} for c in CC],
+       "seasonal": sarmaaya_style(min(int(nw), 52)), "stretch": [{"ccy": c, **{k: (None if pd.isna(v) else (v.item() if hasattr(v, "item") else v)) for k, v in stretch.loc[c].items()}} for c in CC],
        "range": [{"sym": s, **{k: float(v) for k, v in rng.loc[s].items()}} for s in rng.index],
        "note": "Stretch = last week's move vs typical weekly swing (26w std). >2x = STRETCHED, fade next week (2017-26 backtest: 56% hit, +0.15% avg). Expected range = median weekly high-low of last 8 weeks."}
 nxt = int(pd.Timestamp.now().isocalendar()[1]) + 1
